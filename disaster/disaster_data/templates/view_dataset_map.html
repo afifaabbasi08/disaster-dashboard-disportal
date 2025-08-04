@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🗺️ {{ dataset.name }} - Map View</title>
+    <!-- Leaflet CSS with fallback -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" 
+          onerror="this.onerror=null;this.href='https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';" />
+    
+    <!-- Leaflet JS with fallback -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+    <script>
+        // Fallback if Leaflet fails to load
+        window.addEventListener('load', function() {
+            if (typeof L === 'undefined') {
+                console.log('Leaflet not loaded, trying fallback...');
+                var script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+                script.onload = function() {
+                    console.log('Leaflet loaded from fallback CDN');
+                    initializeMap();
+                };
+                script.onerror = function() {
+                    console.log('First fallback failed, trying second...');
+                    var script2 = document.createElement('script');
+                    script2.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+                    script2.onload = function() {
+                        console.log('Leaflet loaded from second fallback CDN');
+                        initializeMap();
+                    };
+                    script2.onerror = function() {
+                        console.error('All Leaflet CDNs failed');
+                        showErrorMessage('Failed to load map library. Please check your internet connection.');
+                    };
+                    document.head.appendChild(script2);
+                };
+                document.head.appendChild(script);
+            } else {
+                initializeMap();
+            }
+        });
+        
+        function showErrorMessage(message) {
+            var mapDiv = document.getElementById('map');
+            mapDiv.innerHTML = '<div style="text-align: center; padding: 50px; color: #ff6b6b;"><h3>⚠️ Map Loading Error</h3><p>' + message + '</p><p>Please try refreshing the page or check your internet connection.</p></div>';
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            text-align: center;
+            padding: 20px 10px;
+            color: #00cccc;
+            font-size: 24px;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #00cccc;
+            color: #000000;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .back-button:hover {
+            background: #00ffff;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(31, 31, 31, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #00cccc;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+        }
+
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            padding: 15px;
+            background: rgba(0, 204, 204, 0.1);
+            border-radius: 10px;
+            margin: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #cccccc;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <a href="{% url 'my_uploads' %}" class="back-button">← Back to Uploads</a>
+    🗺️ {{ dataset.name }} - Map View
+</header>
+
+<div class="info-panel">
+    <h3>📊 Dataset Info</h3>
+    <p><strong>Name:</strong> {{ dataset.name }}</p>
+    <p><strong>Category:</strong> {{ dataset.category }}</p>
+    <p><strong>Uploaded:</strong> {{ dataset.upload_date|date:"M d, Y H:i" }}</p>
+    <p><strong>Points:</strong> {{ point_count }}</p>
+</div>
+
+<div class="stats">
+    <div class="stat-item">
+        <div class="stat-number">{{ point_count }}</div>
+        <div class="stat-label">Total Points</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-number">{{ dataset.category|title }}</div>
+        <div class="stat-label">Disaster Type</div>
+    </div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    function initializeMap() {
+        try {
+            // Check if Leaflet is loaded
+            if (typeof L === 'undefined') {
+                console.error('Leaflet not available');
+                showErrorMessage('Map library not loaded. Please refresh the page.');
+                return;
+            }
+            
+            // Initialize map
+            const map = L.map('map').setView([30, 70], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Get GeoJSON data from Django template
+            const geojsonData = {{ geojson_data|safe }};
+            
+            // Fix None values that might cause JavaScript errors
+            if (geojsonData && geojsonData.features) {
+                geojsonData.features.forEach(feature => {
+                    if (feature.properties) {
+                        // Replace None values with null for JavaScript
+                        Object.keys(feature.properties).forEach(key => {
+                            if (feature.properties[key] === null || feature.properties[key] === undefined) {
+                                feature.properties[key] = null;
+                            }
+                        });
+                    }
+                });
+            }
+            
+            console.log('DEBUG: GeoJSON data received:', geojsonData);
+            console.log('DEBUG: Number of features:', geojsonData.features ? geojsonData.features.length : 0);
+            
+            // Ensure geojsonData is valid
+            if (!geojsonData || typeof geojsonData !== 'object') {
+                console.error('DEBUG: Invalid GeoJSON data received');
+                map.setView([30, 70], 5);
+                L.popup([30, 70], {
+                    content: 'Error: Invalid data received.',
+                    closeButton: false
+                }).openOn(map);
+            } else if (geojsonData.features && geojsonData.features.length > 0) {
+                const bounds = [];
+                let pointsAdded = 0;
+                
+                for (let index = 0; index < geojsonData.features.length; index++) {
+                    try {
+                        const feature = geojsonData.features[index];
+                        const coords = feature.geometry.coordinates;
+                        const lat = parseFloat(coords[1]);
+                        const lng = parseFloat(coords[0]);
+                        
+                        // Validate coordinates
+                        if (isNaN(lat) || isNaN(lng) || lat === 0 || lng === 0 || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+                            console.log(`DEBUG: Skipping invalid coordinates at index ${index}: lat=${lat}, lng=${lng}`);
+                            continue;
+                        }
+                        
+                        console.log(`DEBUG: Adding point ${index + 1}: lat=${lat}, lng=${lng}`);
+                        
+                        L.circleMarker([lat, lng], {
+                            radius: 4,
+                            fillColor: "#00ffff",
+                            color: "#000",
+                            weight: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(
+                            `<strong>${feature.properties.event_title || "Unknown"}</strong><br>
+                             <strong>Date:</strong> ${feature.properties.event_date || "N/A"}<br>
+                             <strong>Location:</strong> ${feature.properties.location || "Unknown"}<br>
+                             <strong>Country:</strong> ${feature.properties.country || "Unknown"}<br>
+                             <strong>Trigger:</strong> ${feature.properties.landslide_trigger || "Unknown"}<br>
+                             <strong>Fatalities:</strong> ${feature.properties.fatality_count || 0}<br>
+                             <strong>Injuries:</strong> ${feature.properties.injury_count || 0}`
+                        );
+                        
+                        bounds.push([lat, lng]);
+                        pointsAdded++;
+                    } catch (error) {
+                        console.error(`DEBUG: Error processing feature ${index}:`, error);
+                    }
+                }
+                
+                console.log(`DEBUG: Added ${pointsAdded} points to map`);
+                
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds, { padding: [20, 20] });
+                    console.log('DEBUG: Map bounds set to fit all points');
+                }
+            } else {
+                // If no data, show a message
+                console.log('DEBUG: No features found in GeoJSON data');
+                map.setView([30, 70], 5);
+                L.popup([30, 70], {
+                    content: 'No data points found in this dataset.',
+                    closeButton: false
+                }).openOn(map);
+            }
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            showErrorMessage('Failed to initialize map. Please try refreshing the page.');
+        }
+    }
+</script>
+
+</body>
+</html> 

@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - DisoPortal</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            background: rgba(0, 204, 204, 0.05);
+            border: 1px solid #00cccc;
+            border-left: 5px solid #00ffff;
+            border-radius: 14px;
+            padding: 40px;
+            width: 400px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.07);
+            text-align: center;
+        }
+
+        h2 {
+            color: #00ffff;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 90%;
+            padding: 14px 12px;
+            margin: 12px 0;
+            border: 1px solid #00cccc;
+            border-radius: 10px;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-size: 1.1em;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 8px #00ffff88;
+        }
+
+        button {
+            background-color: #00cccc;
+            color: #000000;
+            font-weight: bold;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #00ffff;
+            box-shadow: 0 0 10px #00ffffaa;
+        }
+
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #331111;
+            border-left: 4px solid red;
+            color: #ff9999;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+
+        .link-text {
+            margin-top: 20px;
+            color: #cccccc;
+        }
+
+        .link-text a {
+            color: #00cccc;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .link-text a:hover {
+            color: #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h2>🔑 Login to DisoPortal</h2>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="username" placeholder="Username" required><br>
+            <input type="password" name="password" placeholder="Password" required><br>
+            <button type="submit">Login</button>
+        </form>
+
+        <div class="link-text">
+            Don't have an account?
+            <a href="{% url 'signup' %}">Sign up here</a>
+        </div>
+    </div>
+</body>
+</html>

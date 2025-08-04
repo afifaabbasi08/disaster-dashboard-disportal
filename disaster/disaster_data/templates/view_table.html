@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📍 {{ table_name }} - DisoPortal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+        }
+
+        .header {
+            background: rgba(0, 204, 204, 0.1);
+            padding: 20px;
+            border-bottom: 2px solid #00cccc;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: #00ffff;
+            font-size: 28px;
+        }
+
+        .header .table-name {
+            color: #cccccc;
+            font-size: 18px;
+            margin-top: 10px;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #00cccc;
+            color: #000000;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .back-button:hover {
+            background: #00ffff;
+        }
+
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00ffff;
+            font-size: 24px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.15);
+        }
+
+        .metadata-box {
+            width: 90%;
+            margin: 0 auto 30px;
+            background-color: #1f1f1f;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        .metadata-box h4 {
+            margin-top: 0;
+            color: #00ffff;
+            font-size: 20px;
+        }
+
+        #summary-list {
+            list-style: none;
+            padding-left: 0;
+            font-size: 16px;
+        }
+
+        #summary-list li {
+            margin-bottom: 10px;
+            color: #dddddd;
+        }
+
+        .error-message {
+            text-align: center;
+            color: #ff6666;
+            font-size: 18px;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ✅ Loader -->
+    <div id="loader">⏳ Loading map data...</div>
+
+    <div class="header">
+        <a href="{% url 'my_uploads' %}" class="back-button">← Back to My Uploads</a>
+        <h1>📍 Table View</h1>
+        <div class="table-name">{{ table_name }}</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="metadata-box" id="metadata">
+        <h4>📊 Table Summary</h4>
+        <ul id="summary-list">
+            <li>Loading...</li>
+        </ul>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([30, 70], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const tableName = "{{ table_name }}";
+        
+        fetch(`/api/points/?table=${tableName}`)
+            .then(response => response.json())
+            .then(data => {
+                // ✅ Hide loader after data loads
+                document.getElementById("loader").style.display = "none";
+
+                if (data.length === 0) {
+                    document.getElementById("metadata").innerHTML = `
+                        <h4>📊 Table Summary</h4>
+                        <div class="error-message">No points found in this table. Make sure your CSV contains latitude and longitude columns.</div>
+                    `;
+                    return;
+                }
+
+                const bounds = [];
+                const names = new Set();
+                const years = new Set();
+
+                data.forEach(point => {
+                    const lat = parseFloat(point.latitude);
+                    const lon = parseFloat(point.longitude);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        L.circleMarker([lat, lon], {
+                            radius: 6,
+                            fillColor: "#00ffff",
+                            color: "#000",
+                            weight: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(
+                            `<strong>${point.name || "Unnamed"}</strong><br>Date: ${point.date || "N/A"}`
+                        );
+                        bounds.push([lat, lon]);
+
+                        if (point.name) names.add(point.name);
+                        if (point.date) years.add(point.date.split("-")[0]);
+                    }
+                });
+
+                if (bounds.length) {
+                    map.fitBounds(bounds);
+                }
+
+                const summaryList = document.getElementById("summary-list");
+                summaryList.innerHTML = `
+                    <li><strong>Total Points:</strong> ${data.length}</li>
+                    <li><strong>Unique Names:</strong> ${names.size}</li>
+                    <li><strong>Years Covered:</strong> ${[...years].sort().join(', ') || "N/A"}</li>
+                    <li><strong>Table Name:</strong> ${tableName}</li>
+                `;
+            })
+            .catch(error => {
+                document.getElementById("loader").style.display = "none";
+                document.getElementById("metadata").innerHTML = `
+                    <h4>📊 Table Summary</h4>
+                    <div class="error-message">Error loading table data: ${error.message}</div>
+                `;
+            });
+    </script>
+</body>
+</html> 

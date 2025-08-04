@@ -1,0 +1,487 @@
+{% load custom_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ custom_disaster.display_name }} - DisoPortal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 204, 204, 0.3);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+            opacity: 0.8;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #00cccc;
+            color: #000000;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s;
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background: #00ffff;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: rgba(31, 31, 31, 0.8);
+            border: 1px solid #00cccc;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card h3 {
+            color: #00ffff;
+            margin: 0 0 10px 0;
+            font-size: 1.5em;
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        .data-table {
+            background: rgba(31, 31, 31, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #00cccc;
+            margin-top: 30px;
+        }
+
+        .data-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #333;
+        }
+
+        .data-table tr:hover {
+            background: rgba(0, 204, 204, 0.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cccccc;
+        }
+
+        .empty-state h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .map-container {
+            background: rgba(31, 31, 31, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #00cccc;
+            margin-top: 30px;
+            height: 500px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .map-controls {
+            padding: 20px;
+            background: rgba(0, 204, 204, 0.1);
+            border-bottom: 1px solid #00cccc;
+        }
+
+        .map-controls button {
+            background: #00cccc;
+            color: #000000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .map-controls button:hover {
+            background: #00ffff;
+            transform: translateY(-2px);
+        }
+
+        .custom-marker {
+            background: transparent !important;
+        }
+
+        .custom-cluster {
+            background: transparent !important;
+        }
+
+        .map-legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(31, 31, 31, 0.9);
+            border: 1px solid #00cccc;
+            border-radius: 8px;
+            padding: 15px;
+            color: white;
+            z-index: 1000;
+        }
+
+        .map-legend h4 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .legend-marker {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid white;
+            margin-right: 8px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .data-table {
+                font-size: 0.9em;
+            }
+            
+            .data-table th,
+            .data-table td {
+                padding: 10px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="{% url 'home-ui' %}" class="back-button">← Back to Dashboard</a>
+    
+    <div class="header">
+        <h1>{{ custom_disaster.icon }} {{ custom_disaster.display_name }}</h1>
+        <p>{{ custom_disaster.description }}</p>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>📊 Total Records</h3>
+                <div class="number">{{ data|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>📋 Columns</h3>
+                <div class="number">{{ columns|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>🗓️ Last Updated</h3>
+                <div class="number">{{ custom_disaster.updated_at|date:"M d"|default:"Today" }}</div>
+            </div>
+        </div>
+
+        {% if data %}
+            <!-- Professional Clustered Map Section -->
+            <div class="map-container">
+                <div class="map-controls">
+                    <button onclick="toggleClustering()">🎯 Toggle Clustering</button>
+                    <button onclick="fitBounds()">🌍 Fit to Data</button>
+                    <button onclick="clearMarkers()">🗑️ Clear All</button>
+                    <button onclick="showHeatmap()">🔥 Show Heatmap</button>
+                </div>
+                <div id="map"></div>
+                
+                <!-- Legend -->
+                <div class="map-legend">
+                    <h4>Hazard Levels:</h4>
+                    <div class="legend-item">
+                        <div class="legend-marker" style="background-color: #ff0000;"></div>
+                        <span>Very High</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker" style="background-color: #ff6600;"></div>
+                        <span>High</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker" style="background-color: #ffff00;"></div>
+                        <span>Medium</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-marker" style="background-color: #00ff00;"></div>
+                        <span>Low</span>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>📭 No Data Available</h3>
+                <p>No records found in this dataset.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        let map = null;
+        let markers = [];
+        let markerClusterGroup = null;
+        let heatmapLayer = null;
+        let clusteringEnabled = true;
+
+        // Initialize map when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeMap();
+            loadMapData();
+        });
+
+        function initializeMap() {
+            map = L.map('map').setView([0, 0], 2);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            
+            // Initialize marker cluster group
+            markerClusterGroup = L.markerClusterGroup({
+                chunkedLoading: true,
+                maxClusterRadius: 50,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: function(cluster) {
+                    const count = cluster.getChildCount();
+                    let size = 'small';
+                    if (count > 100) size = 'large';
+                    else if (count > 10) size = 'medium';
+                    
+                    return L.divIcon({
+                        html: `<div style="background-color: #00cccc; color: white; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);">${count}</div>`,
+                        className: 'custom-cluster',
+                        iconSize: L.point(40, 40)
+                    });
+                }
+            });
+            map.addLayer(markerClusterGroup);
+        }
+
+        function loadMapData() {
+            // Get data from the server via AJAX
+            fetch(`/api/custom-disaster-data/{{ custom_disaster.name }}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data || !data.length) {
+                        console.log('No data received');
+                        return;
+                    }
+                    
+                    // Find latitude and longitude columns
+                    const columns = Object.keys(data[0]);
+                    let latCol = null;
+                    let lngCol = null;
+                    let nameCol = null;
+                    let hazardCol = null;
+                    
+                    for (let i = 0; i < columns.length; i++) {
+                        const col = columns[i].toLowerCase();
+                        if (col.includes('lat')) latCol = columns[i];
+                        if (col.includes('lon') || col.includes('lng')) lngCol = columns[i];
+                        if (col.includes('name') || col.includes('title')) nameCol = columns[i];
+                        if (col.includes('hazard') || col.includes('risk')) hazardCol = columns[i];
+                    }
+                    
+                    if (!latCol || !lngCol) {
+                        console.log('No latitude/longitude columns found');
+                        return;
+                    }
+                    
+                    data.forEach((row, index) => {
+                        const lat = parseFloat(row[latCol]);
+                        const lng = parseFloat(row[lngCol]);
+                        const name = nameCol ? row[nameCol] : `Point ${index + 1}`;
+                        const hazard = hazardCol ? row[hazardCol] : 'Unknown';
+                        
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            // Create custom icon based on hazard level
+                            const icon = createCustomIcon(hazard);
+                            
+                            const marker = L.marker([lat, lng], { icon: icon });
+                            marker.bindPopup(`
+                                <div style="text-align: center;">
+                                    <h4 style="margin: 0; color: #00cccc;">${name}</h4>
+                                    <p style="margin: 5px 0;"><strong>Hazard:</strong> ${hazard}</p>
+                                    <p style="margin: 5px 0;"><strong>Location:</strong> ${lat.toFixed(3)}, ${lng.toFixed(3)}</p>
+                                </div>
+                            `);
+                            
+                            markerClusterGroup.addLayer(marker);
+                            markers.push(marker);
+                        }
+                    });
+                    
+                    if (markers.length > 0) {
+                        map.fitBounds(markerClusterGroup.getBounds());
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading map data:', error);
+                });
+        }
+
+        function createCustomIcon(hazard) {
+            let color = '#00cccc'; // Default color
+            let size = [20, 20];
+            
+            switch(hazard.toLowerCase()) {
+                case 'very high':
+                    color = '#ff0000';
+                    size = [25, 25];
+                    break;
+                case 'high':
+                    color = '#ff6600';
+                    size = [22, 22];
+                    break;
+                case 'medium':
+                    color = '#ffff00';
+                    size = [20, 20];
+                    break;
+                case 'low':
+                    color = '#00ff00';
+                    size = [18, 18];
+                    break;
+            }
+            
+            return L.divIcon({
+                html: `<div style="background-color: ${color}; width: ${size[0]}px; height: ${size[1]}px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.8);"></div>`,
+                className: 'custom-marker',
+                iconSize: size,
+                iconAnchor: [size[0]/2, size[1]/2]
+            });
+        }
+
+        function toggleClustering() {
+            if (clusteringEnabled) {
+                map.removeLayer(markerClusterGroup);
+                markers.forEach(marker => map.addLayer(marker));
+                clusteringEnabled = false;
+            } else {
+                markers.forEach(marker => map.removeLayer(marker));
+                map.addLayer(markerClusterGroup);
+                clusteringEnabled = true;
+            }
+        }
+
+        function fitBounds() {
+            if (markers.length > 0) {
+                if (clusteringEnabled) {
+                    map.fitBounds(markerClusterGroup.getBounds());
+                } else {
+                    const group = new L.featureGroup(markers);
+                    map.fitBounds(group.getBounds());
+                }
+            }
+        }
+
+        function clearMarkers() {
+            if (clusteringEnabled) {
+                markerClusterGroup.clearLayers();
+            } else {
+                markers.forEach(marker => map.removeLayer(marker));
+            }
+            markers = [];
+        }
+
+        function showHeatmap() {
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+                return;
+            }
+            
+            // Create heatmap data from markers
+            const heatmapData = markers.map(marker => {
+                const latlng = marker.getLatLng();
+                return [latlng.lat, latlng.lng, 1];
+            });
+            
+            heatmapLayer = L.heatLayer(heatmapData, {
+                radius: 25,
+                blur: 15,
+                maxZoom: 10
+            }).addTo(map);
+        }
+    </script>
+</body>
+</html> 

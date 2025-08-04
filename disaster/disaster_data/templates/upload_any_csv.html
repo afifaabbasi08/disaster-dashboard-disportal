@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Any CSV - Disaster Management</title>
+    <style>
+        html {
+            margin: 0;
+            height: 100%;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background: transparent;
+            color: #ffffff;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            border: 1px solid #00cccc;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 2px solid #00ffff;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            color: #000000;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+            color: #000000;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .upload-section h2 {
+            color: #00ffff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        
+        .file-input-container {
+            border: 3px dashed #00cccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 20px;
+            background: rgba(0, 204, 204, 0.05);
+        }
+        
+        .file-input-container:hover {
+            border-color: #00ffff;
+            background: rgba(0, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .file-input-container.dragover {
+            border-color: #00ffff;
+            background: rgba(0, 255, 255, 0.15);
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 204, 204, 0.1);
+            border-radius: 8px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+            z-index: 1000;
+            font-weight: bold;
+            animation: slideIn 0.5s ease-out;
+            max-width: 300px;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        
+        .disaster-type-section {
+            margin-top: 30px;
+        }
+        
+        .disaster-type-section h2 {
+            color: #00ffff;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #00ffff;
+        }
+        
+        select, input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #00cccc;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.3);
+            color: #ffffff;
+        }
+        
+        select:focus, input:focus, textarea:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+        }
+        
+        select option {
+            background: #000000;
+            color: #ffffff;
+        }
+        
+        .custom-fields {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 204, 204, 0.1);
+            border-radius: 8px;
+            border-left: 4px solid #00ffff;
+        }
+        
+        .custom-fields h3 {
+            color: #00ffff;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+            box-shadow: 0 0 15px rgba(0, 204, 204, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 204, 204, 0.5);
+            background: linear-gradient(135deg, #00ffff 0%, #00cccc 100%);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .message.success {
+            background: rgba(0, 255, 0, 0.1);
+            color: #00ff00;
+            border: 1px solid #00ff00;
+        }
+        
+        .message.error {
+            background: rgba(255, 0, 0, 0.1);
+            color: #ff6666;
+            border: 1px solid #ff6666;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            display: none;
+            border: 1px solid #00cccc;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #00cccc 0%, #00ffff 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #00ffff;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+        
+        .back-link:hover {
+            color: #00cccc;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 Upload Any CSV</h1>
+            <p>Upload any disaster data CSV and choose where to save it</p>
+        </div>
+        
+        <div class="content">
+            {% csrf_token %}
+            <div class="upload-section">
+                <h2>📂 Select CSV File</h2>
+                <div class="file-input-container" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 3em; margin-bottom: 10px;">📁</div>
+                    <h3>Click to select or drag & drop</h3>
+                    <p>Choose any CSV file with disaster data</p>
+                    <input type="file" id="fileInput" accept=".csv" onchange="handleFileSelect(event)">
+                </div>
+                
+                <div class="file-info" id="fileInfo">
+                    <strong>Selected file:</strong> <span id="fileName"></span><br>
+                    <strong>Size:</strong> <span id="fileSize"></span><br>
+                    <strong>Type:</strong> <span id="fileType"></span>
+                </div>
+            </div>
+            
+            <div class="disaster-type-section">
+                <h2>🎯 Choose Where to Save</h2>
+                
+                <div class="form-group">
+                    <label for="disasterType">Disaster Type:</label>
+                    <select id="disasterType" onchange="handleDisasterTypeChange()">
+                        <option value="">-- Select Disaster Type --</option>
+                    </select>
+                </div>
+                
+                <div class="custom-fields" id="customFields">
+                    <h3>➕ Create New Disaster Type</h3>
+                    
+                    <div class="form-group">
+                        <label for="customName">Disaster Name:</label>
+                        <input type="text" id="customName" placeholder="e.g., Volcano, Tsunami, Wildfire">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customDisplayName">Display Name:</label>
+                        <input type="text" id="customDisplayName" placeholder="e.g., Volcano Eruptions, Tsunami Events">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customDescription">Description:</label>
+                        <textarea id="customDescription" rows="3" placeholder="Describe this disaster type..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customIcon">Icon (Emoji):</label>
+                        <select id="customIcon">
+                            <option value="🌋">🌋 Volcano</option>
+                            <option value="🌊">🌊 Tsunami</option>
+                            <option value="🔥">🔥 Wildfire</option>
+                            <option value="🌪️">🌪️ Tornado</option>
+                            <option value="⚡">⚡ Lightning</option>
+                            <option value="🌨️">🌨️ Avalanche</option>
+                            <option value="💧">💧 Flood</option>
+                            <option value="🌡️">🌡️ Heatwave</option>
+                            <option value="❄️">❄️ Blizzard</option>
+                            <option value="🌩️">🌩️ Storm</option>
+                            <option value="🏔️">🏔️ Landslide</option>
+                            <option value="🌊">🌊 Wave</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="customColor">Card Color:</label>
+                        <select id="customColor">
+                            <option value="#ff6600">🟠 Orange</option>
+                            <option value="#ff6b6b">🔴 Red</option>
+                            <option value="#4ecdc4">🔵 Teal</option>
+                            <option value="#ffe66d">🟡 Yellow</option>
+                            <option value="#a8e6cf">🟢 Light Green</option>
+                            <option value="#45b7d1">🔵 Blue</option>
+                            <option value="#dda0dd">🟣 Purple</option>
+                            <option value="#98d8c8">🟢 Mint</option>
+                            <option value="#ffb6c1">🩷 Pink</option>
+                            <option value="#90ee90">🟢 Green</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn" id="uploadBtn" onclick="uploadFile()" disabled>
+                📤 Upload CSV
+            </button>
+            
+            <!-- Test button to verify JavaScript is working -->
+            <button type="button" onclick="alert('JavaScript is working!')" style="margin-top: 10px; padding: 5px 10px; background: #ff6600; color: white; border: none; border-radius: 5px;">
+                Test JavaScript
+            </button>
+            
+            <div class="message" id="message"></div>
+            
+            <div class="progress" id="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <a href="/home/" class="back-link">← Back to Home</a>
+        </div>
+    </div>
+    
+    <script>
+        let selectedFile = null;
+        
+        // Debug on page load
+        console.log('Page loaded');
+        console.log('Initial uploadBtn disabled:', document.getElementById('uploadBtn').disabled);
+        
+        // Load available disaster types on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAvailableDisasterTypes();
+        });
+        
+        function loadAvailableDisasterTypes() {
+            fetch('/api/disaster-types/?for=dropdown')
+                .then(response => response.json())
+                .then(types => {
+                    const select = document.getElementById('disasterType');
+                    // Clear existing options except the first one
+                    select.innerHTML = '<option value="">-- Select Disaster Type --</option>';
+                    
+                    // Add standard types
+                    const standardTypes = [
+                        {value: 'earthquake', label: '🌍 Earthquake'},
+                        {value: 'landslide', label: '⛰️ Landslide'},
+                        {value: 'hurricane', label: '🌀 Hurricane'}
+                    ];
+                    
+                    standardTypes.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type.value;
+                        option.textContent = type.label;
+                        select.appendChild(option);
+                    });
+                    
+                    // Add custom types
+                    types.forEach(type => {
+                        if (type.value !== 'other' && !['earthquake', 'landslide', 'hurricane'].includes(type.value)) {
+                            const option = document.createElement('option');
+                            option.value = type.value;
+                            option.textContent = type.label || `${type.icon} ${type.display_name}`;
+                            select.appendChild(option);
+                        }
+                    });
+                    
+                    // Add "Other" option only if it doesn't already exist
+                    const existingOther = select.querySelector('option[value="other"]');
+                    if (!existingOther) {
+                        const otherOption = document.createElement('option');
+                        otherOption.value = 'other';
+                        otherOption.textContent = '➕ Other (Create New)';
+                        select.appendChild(otherOption);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading disaster types:', error);
+                });
+        }
+        
+        function handleFileSelect(event) {
+            console.log('handleFileSelect() called');
+            const file = event.target.files[0];
+            console.log('Selected file:', file);
+            if (file) {
+                selectedFile = file;
+                displayFileInfo(file);
+                checkUploadReady();
+            }
+        }
+        
+        function displayFileInfo(file) {
+            const fileInfo = document.getElementById('fileInfo');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const fileType = document.getElementById('fileType');
+            
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileType.textContent = file.type || 'text/csv';
+            
+            fileInfo.style.display = 'block';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function handleDisasterTypeChange() {
+            console.log('handleDisasterTypeChange() called');
+            const disasterType = document.getElementById('disasterType').value;
+            console.log('Selected disaster type:', disasterType);
+            const customFields = document.getElementById('customFields');
+            
+            if (disasterType === 'other') {
+                customFields.style.display = 'block';
+            } else {
+                customFields.style.display = 'none';
+            }
+            
+            checkUploadReady();
+        }
+        
+        function checkUploadReady() {
+            console.log('checkUploadReady() called');
+            const disasterType = document.getElementById('disasterType').value;
+            const uploadBtn = document.getElementById('uploadBtn');
+            console.log('selectedFile:', selectedFile);
+            console.log('disasterType:', disasterType);
+            
+            if (selectedFile && disasterType) {
+                if (disasterType === 'other') {
+                    const customName = document.getElementById('customName').value.trim();
+                    console.log('customName:', customName);
+                    uploadBtn.disabled = !customName;
+                } else {
+                    uploadBtn.disabled = false;
+                }
+            } else {
+                uploadBtn.disabled = true;
+            }
+            console.log('uploadBtn disabled:', uploadBtn.disabled);
+        }
+        
+        // Add event listeners for custom fields
+        document.getElementById('customName').addEventListener('input', checkUploadReady);
+        document.getElementById('customDisplayName').addEventListener('input', checkUploadReady);
+        document.getElementById('customDescription').addEventListener('input', checkUploadReady);
+        
+        function uploadFile() {
+            console.log('uploadFile() called');
+            console.log('selectedFile:', selectedFile);
+            
+            if (!selectedFile) {
+                showMessage('Please select a file first.', 'error');
+                return;
+            }
+            
+            const disasterType = document.getElementById('disasterType').value;
+            if (!disasterType) {
+                showMessage('Please select a disaster type.', 'error');
+                return;
+            }
+            
+            if (disasterType === 'other') {
+                const customName = document.getElementById('customName').value.trim();
+                if (!customName) {
+                    showMessage('Please provide a name for the new disaster type.', 'error');
+                    return;
+                }
+            }
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('disaster_type', disasterType);
+            
+            if (disasterType === 'other') {
+                formData.append('custom_name', document.getElementById('customName').value.trim());
+                formData.append('custom_display_name', document.getElementById('customDisplayName').value.trim());
+                formData.append('custom_description', document.getElementById('customDescription').value.trim());
+                formData.append('custom_icon', document.getElementById('customIcon').value);
+                formData.append('custom_color', document.getElementById('customColor').value);
+            }
+            
+            // Show progress
+            const progress = document.getElementById('progress');
+            const progressBar = document.getElementById('progressBar');
+            const uploadBtn = document.getElementById('uploadBtn');
+            
+            progress.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = '📤 Uploading...';
+            
+            // Simulate progress
+            let progressValue = 0;
+            const progressInterval = setInterval(() => {
+                progressValue += Math.random() * 15;
+                if (progressValue > 90) progressValue = 90;
+                progressBar.style.width = progressValue + '%';
+            }, 200);
+            
+            // Get CSRF token
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            fetch('/upload/any/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(progressInterval);
+                progressBar.style.width = '100%';
+                
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Reset form
+                    setTimeout(() => {
+                        document.getElementById('fileInput').value = '';
+                        document.getElementById('disasterType').value = '';
+                        document.getElementById('customFields').style.display = 'none';
+                        document.getElementById('fileInfo').style.display = 'none';
+                        selectedFile = null;
+                        checkUploadReady();
+                        progress.style.display = 'none';
+                        progressBar.style.width = '0%';
+                        uploadBtn.textContent = '📤 Upload CSV';
+                    }, 5000); // Increased timeout to 5 seconds
+                } else {
+                    showMessage(data.message, 'error');
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = '📤 Upload CSV';
+                    progress.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                showMessage('Upload failed: ' + error.message, 'error');
+                uploadBtn.disabled = false;
+                uploadBtn.textContent = '📤 Upload CSV';
+                progress.style.display = 'none';
+            });
+        }
+        
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = message; // Use innerHTML to support HTML links
+            
+            // If this is a success message for a custom disaster type, show notification
+            if (type === 'success' && message.includes('New') && message.includes('card added')) {
+                showNotification('🎉 New disaster type card created! Check the homepage to see it.');
+            }
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = message;
+            document.body.appendChild(notification);
+            
+            // Remove notification after 5 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.5s ease-in';
+                setTimeout(() => notification.remove(), 500);
+            }, 5000);
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 8000); // Increased timeout for success messages with links
+        }
+        
+        // Drag and drop functionality
+        const fileContainer = document.querySelector('.file-input-container');
+        
+        fileContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileContainer.classList.add('dragover');
+        });
+        
+        fileContainer.addEventListener('dragleave', () => {
+            fileContainer.classList.remove('dragover');
+        });
+        
+        fileContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileContainer.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                    selectedFile = file;
+                    document.getElementById('fileInput').files = files;
+                    displayFileInfo(file);
+                    checkUploadReady();
+                } else {
+                    showMessage('Please select a CSV file.', 'error');
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Chatbot</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #fff;
+            padding: 40px;
+            margin: 0;
+        }
+
+        #chatbox {
+            max-width: 900px; /* Wider for 14-inch screens */
+            margin: auto;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 25px;
+            border-radius: 16px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: 500;
+            font-size: 26px;
+            letter-spacing: 1px;
+        }
+
+        #messages {
+            max-height: 600px; /* Taller for better viewing */
+            overflow-y: auto;
+            padding-right: 10px;
+            font-size: 16px; /* Larger font */
+            scrollbar-width: thin;
+            scrollbar-color: #00e1ff transparent;
+        }
+
+        .message {
+            margin: 12px 0;
+            padding: 14px 18px;
+            border-radius: 12px;
+            max-width: 75%;
+            font-size: 16px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .user {
+            background: linear-gradient(135deg, #00e1ff, #0077b6);
+            text-align: right;
+            color: white;
+            margin-left: auto;
+        }
+
+        .bot {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #input-box {
+            display: flex;
+            margin-top: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 5px;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: white;
+            font-size: 15px;
+        }
+
+        #send-btn {
+            background: linear-gradient(135deg, #00e1ff, #00b4d8);
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            color: black;
+            font-weight: bold;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #send-btn:hover {
+            background: linear-gradient(135deg, #00b4d8, #0077b6);
+            color: white;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="chatbox">
+        <h2>🤖 AI Assistance</h2>
+        <div id="messages"></div>
+        <div id="input-box">
+            <input type="text" id="user-input" placeholder="Type your message...">
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const sendBtn = document.getElementById("send-btn");
+        const userInput = document.getElementById("user-input");
+        const messages = document.getElementById("messages");
+
+        sendBtn.onclick = sendMessage;
+        userInput.addEventListener("keypress", function(e) {
+            if (e.key === "Enter") sendMessage();
+        });
+
+        function appendMessage(text, sender) {
+            const msg = document.createElement("div");
+            msg.className = `message ${sender}`;
+            msg.textContent = text;
+            messages.appendChild(msg);
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text) return;
+
+            appendMessage(text, "user");
+            userInput.value = "";
+
+            fetch("/api/chatbot/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: text })
+            })
+            .then(res => res.json())
+            .then(data => {
+                appendMessage(data.reply, "bot");
+            })
+            .catch(() => {
+                appendMessage("⚠️ Error contacting the chatbot API.", "bot");
+            });
+        }
+    </script>
+</body>
+</html>

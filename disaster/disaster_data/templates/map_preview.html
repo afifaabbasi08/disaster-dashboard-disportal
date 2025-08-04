@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📍 CSV Preview - DisoPortal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+            margin: 0;
+        }
+
+        h2 {
+            text-align: center;
+            padding: 20px;
+            color: #00cccc;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            margin: 20px auto;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,255,255,0.2);
+        }
+
+        .metadata-box {
+            width: 90%;
+            margin: 20px auto;
+            background-color: #1f1f1f;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,255,255,0.1);
+        }
+
+        .metadata-box h4 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+        }
+
+        #summary-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        #summary-list li {
+            margin-bottom: 5px;
+            color: #dddddd;
+        }
+
+        .save-section {
+            width: 90%;
+            margin: 0 auto 30px;
+            text-align: center;
+        }
+
+        .save-section input {
+            padding: 10px;
+            width: 250px;
+            border-radius: 5px;
+            border: none;
+            font-size: 16px;
+        }
+
+        .save-section button {
+            padding: 10px 20px;
+            background-color: #00cccc;
+            color: #000;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+
+        .save-section button:hover {
+            background-color: #00aaaa;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>📍 CSV Preview Map</h2>
+    <div id="map"></div>
+
+    <div class="metadata-box">
+        <h4>📊 Metadata Summary</h4>
+        <ul id="summary-list"><li>Loading...</li></ul>
+        <div id="disaster-type-info" style="margin-top: 15px; padding: 10px; background: rgba(0,255,255,0.1); border-radius: 5px; display: none;">
+            <strong>Detected Disaster Type:</strong> <span id="detected-type">-</span>
+        </div>
+    </div>
+
+    <div class="save-section">
+        <input type="text" id="tableName" placeholder="Enter table name (e.g. flood_points)" />
+        <button onclick="saveTable()">💾 Save Table</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([30, 70], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        fetch('/api/preview-csv/')
+            .then(res => res.json())
+            .then(data => {
+                const bounds = [];
+                const names = new Set();
+                const years = new Set();
+
+                data.points.forEach(pt => {
+                    const lat = parseFloat(pt.latitude);
+                    const lon = parseFloat(pt.longitude);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        L.circleMarker([lat, lon], {
+                            radius: 6,
+                            fillColor: '#00ffff',
+                            color: '#000',
+                            weight: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(`<strong>${pt.name || "Unnamed"}</strong><br>${pt.date || ""}`);
+                        bounds.push([lat, lon]);
+
+                        if (pt.name) names.add(pt.name);
+                        if (pt.date) years.add(pt.date.split("-")[0]);
+                    }
+                });
+
+                if (bounds.length) {
+                    map.fitBounds(bounds);
+                }
+
+                // Metadata summary
+                document.getElementById('summary-list').innerHTML = `
+                    <li><strong>Total Points:</strong> ${data.points.length}</li>
+                    <li><strong>Total Rows:</strong> ${data.total_rows}</li>
+                    <li><strong>Unique Names:</strong> ${names.size}</li>
+                    <li><strong>Years Covered:</strong> ${[...years].sort().join(', ') || "N/A"}</li>
+                `;
+                
+                // Show detected disaster type if available
+                if (data.disaster_type && data.disaster_type !== 'generic') {
+                    document.getElementById('disaster-type-info').style.display = 'block';
+                    document.getElementById('detected-type').textContent = data.disaster_type.charAt(0).toUpperCase() + data.disaster_type.slice(1);
+                }
+            });
+
+        function saveTable() {
+            const tableName = document.getElementById('tableName').value.trim();
+            if (!tableName) {
+                alert("Please enter a table name.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('table_name', tableName);
+
+            fetch('/save-table/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    alert("Error: " + data.error);
+                } else {
+                    let message = `✅ Table saved as: ${data.table}`;
+                    if (data.disaster_type && data.disaster_type !== 'generic') {
+                        if (data.is_new_disaster) {
+                            message += `\n🆕 New disaster type detected: ${data.disaster_type}`;
+                            message += `\n🎉 A new ${data.disaster_type} card has been added to the homepage!`;
+                        } else {
+                            message += `\n📊 Data integrated with existing ${data.disaster_type} model`;
+                        }
+                    }
+                    alert(message);
+                    window.location.href = '/my-uploads/';
+                }
+            })
+            .catch(err => {
+                alert("Error saving table.");
+                console.error(err);
+            });
+        }
+    </script>
+</body>
+</html>

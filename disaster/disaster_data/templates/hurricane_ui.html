@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hurricane Dashboard</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 10, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 6px solid #00cccc;
+            border-top: 6px solid transparent;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            background: transparent;
+            font-size: 28px;
+            font-weight: bold;
+            color: #00cccc;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+        }
+
+        .controls label {
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        select {
+            padding: 6px 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #00cccc;
+            background-color: #101d29;
+            color: #ffffff;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+        }
+
+        #chart-section {
+            display: none;
+            padding: 20px;
+        }
+
+        #chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #chart-container canvas {
+            background: rgba(16, 29, 41, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 400px;
+            max-height: 300px;
+            width: 45%;
+            min-width: 350px;
+        }
+
+        #metadata-section {
+            display: none;
+            padding: 20px;
+        }
+
+        #metadata-box {
+            background: rgba(16, 29, 41, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 0 auto;
+            max-width: 600px;
+            border: 2px solid #00cccc;
+        }
+
+        #metadata-text p {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #ffffff;
+        }
+
+        #metadata-text strong {
+            color: #00ffff;
+        }
+
+        .card-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card-button {
+            background-color: #00cccc;
+            padding: 20px;
+            width: 250px;
+            border-radius: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #000;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+        }
+
+        .card-button:hover {
+            background-color: #00ffff;
+            transform: translateY(-2px);
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        .download-btn {
+            background-color: #00cccc;
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+        }
+
+        .download-btn:hover {
+            background-color: #00ffff;
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <header>DisoPortal: Hurricane Dashboard</header>
+
+    <div class="controls">
+        <label for="basin-select">Filter by Basin:</label>
+        <select id="basin-select">
+            <option value="">All Basins</option>
+        </select>
+    </div>
+
+    <div id="map"></div>
+
+    <div style="text-align:center; margin: 20px 0;">
+        <a href="{% url 'download_hurricane_csv' %}" class="download-btn">⬇️ Download Hurricane CSV</a>
+    </div>
+
+    <div class="card-buttons">
+        <div class="card-button" onclick="showSection('chart')">📊 View Graphs</div>
+        <div class="card-button" onclick="showSection('metadata')">📄 View Metadata</div>
+    </div>
+
+    <div id="chart-section">
+        <div id="chart-container">
+            <canvas id="bar-chart"></canvas>
+            <canvas id="pie-chart"></canvas>
+        </div>
+    </div>
+
+    <div id="metadata-section">
+        <div id="metadata-box">
+            <div id="metadata-text">
+                <p><strong>Total Hurricanes:</strong> <span id="meta-total">-</span></p>
+                <p><strong>Most Active Basin:</strong> <span id="meta-basin">-</span></p>
+                <p><strong>Average Duration:</strong> <span id="meta-duration">-</span></p>
+            </div>
+            <button class="download-btn" onclick="downloadMetadata()">Download</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let currentData = [];
+let map; 
+let markerClusterGroup;
+
+// Initialize map
+function initMap() {
+    map = L.map('map').setView([20, -60], 4);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 8
+    });
+    map.addLayer(markerClusterGroup);
+
+    // Legend
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = function () {
+        const div = L.DomUtil.create('div', 'info legend');
+        div.style.backgroundColor = 'rgba(0,0,0,0.8)';
+        div.style.padding = '10px';
+        div.style.borderRadius = '5px';
+        div.style.color = 'white';
+        div.style.fontSize = '12px';
+        div.innerHTML = `
+            <h4 style="margin: 0 0 10px 0; color: #00ffff;">Hurricane Tracks</h4>
+            <div><span style="background: #FF6B6B; width: 12px; height: 12px; display: inline-block; border-radius: 50%; margin-right: 5px;"></span>North Atlantic</div>
+            <div><span style="background: #4ECDC4; width: 12px; height: 12px; display: inline-block; border-radius: 50%; margin-right: 5px;"></span>Western North Pacific</div>
+            <div><span style="background: #45B7D1; width: 12px; height: 12px; display: inline-block; border-radius: 50%; margin-right: 5px;"></span>Eastern North Pacific</div>
+            <div><span style="background: #96CEB4; width: 12px; height: 12px; display: inline-block; border-radius: 50%; margin-right: 5px;"></span>Other Basins</div>
+        `;
+        return div;
+    };
+    legend.addTo(map);
+}
+
+// Fetch data
+async function fetchMapData(basin = null) {
+    document.getElementById('loader').style.display = 'flex';
+
+    const url = basin ? `/api/hurricanes/?basin=${encodeURIComponent(basin)}` : `/api/hurricanes/`;
+
+    try {
+        console.log("Fetching hurricane data from:", url);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const data = await response.json();
+        console.log("Hurricane data received:", data.length, "records");
+
+        currentData = data;
+
+        // Only populate dropdown on first load
+        if (!basin) {
+            populateBasinDropdown(getUniqueBasins(data));
+        }
+
+        // Render and zoom
+        renderMap(currentData);
+
+    } catch (error) {
+        console.error("Fetch error:", error);
+        alert("⚠️ Failed to load hurricane data: " + error.message);
+    } finally {
+        document.getElementById('loader').style.display = 'none';
+    }
+}
+
+
+
+function getUniqueBasins(data) {
+    return [...new Set(data.map(h => h.basin))]
+        .filter(b => b && b !== 'Unknown')
+        .sort();
+}
+
+function populateBasinDropdown(basins) {
+    const dropdown = document.getElementById('basin-select');
+    dropdown.innerHTML = '<option value="">All Basins</option>';
+
+    basins.forEach(basin => {
+        const option = document.createElement('option');
+        option.value = basin;
+        option.textContent = basin;
+        dropdown.appendChild(option);
+    });
+
+    dropdown.addEventListener('change', () => {
+        const selectedBasin = dropdown.value || null;
+        fetchMapData(selectedBasin); // ✅ This now shows loader and zooms
+    });
+}
+
+
+
+// Render map
+function renderMap(hurricaneData) {
+    markerClusterGroup.clearLayers();
+    console.log("Rendering", hurricaneData.length, "points on map.");
+
+    if (hurricaneData.length === 0) return;
+
+    // Sample for performance
+    let dataToRender = hurricaneData;
+    if (hurricaneData.length > 5000) {
+        const sampleRate = Math.ceil(hurricaneData.length / 5000);
+        dataToRender = hurricaneData.filter((_, i) => i % sampleRate === 0);
+        console.log(`Sampled ${dataToRender.length} points from ${hurricaneData.length} total`);
+    }
+
+    const bounds = L.latLngBounds();
+    const hurricaneTracks = {};
+
+    dataToRender.forEach(h => {
+        if (!hurricaneTracks[h.id]) hurricaneTracks[h.id] = [];
+        hurricaneTracks[h.id].push(h);
+    });
+
+    Object.values(hurricaneTracks).forEach(track => {
+        if (track.length < 2) return;
+
+        const color = getBasinColor(track[0].basin);
+        const latlngs = track.map(h => [h.latitude, h.longitude]);
+
+        // Polyline directly on map
+        L.polyline(latlngs, {
+            color: color,
+            weight: 2,
+            opacity: 0.7
+        }).addTo(map);
+
+        // Add clustered markers
+        track.forEach((h, index) => {
+            if (index % 3 === 0) {
+                const marker = L.circleMarker([h.latitude, h.longitude], {
+                    radius: 4,
+                    fillColor: color,
+                    color: '#333',
+                    weight: 1,
+                    opacity: 0.8,
+                    fillOpacity: 0.6
+                });
+                marker.bindPopup(`
+                    <div style="font-family: Arial, sans-serif; font-size: 12px;">
+                        <strong>Hurricane:</strong> ${h.id}<br>
+                        <strong>Basin:</strong> ${h.basin}<br>
+                        <strong>Subbasin:</strong> ${h.subbasin}<br>
+                        <strong>Nature:</strong> ${h.nature}<br>
+                        <strong>Time:</strong> ${h.iso_time ? new Date(h.iso_time).toLocaleDateString() : 'Unknown'}
+                    </div>
+                `);
+                markerClusterGroup.addLayer(marker);
+                bounds.extend([h.latitude, h.longitude]);
+            }
+        });
+    });
+
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+}
+
+function getBasinColor(basin) {
+    const colors = {
+        'North Atlantic': '#FF6B6B',
+        'Western North Pacific': '#4ECDC4',
+        'Eastern North Pacific': '#45B7D1',
+        'South Pacific': '#96CEB4',
+        'South Indian': '#FFEAA7',
+        'North Indian': '#DDA0DD',
+        'South Atlantic': '#98D8C8'
+    };
+    return colors[basin] || '#00FF00';
+}
+// --- Show section handler ---
+function showSection(section) {
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('chart-section').style.display = 'none';
+    document.getElementById('metadata-section').style.display = 'none';
+
+    if (section === 'chart') {
+        document.getElementById('chart-section').style.display = 'block';
+        renderChartsFromData(currentData); // Render directly from currentData
+    }
+    else if (section === 'metadata') {
+        document.getElementById('metadata-section').style.display = 'block';
+        updateMetadata();
+    }
+    else {
+        document.getElementById('map').style.display = 'block';
+    }
+}
+
+// --- Metadata update ---
+function updateMetadata() {
+    document.getElementById("meta-total").innerText = currentData.length;
+
+    if (currentData.length > 0) {
+        // Most active basin
+        let basinCounts = {};
+        currentData.forEach(h => {
+            basinCounts[h.basin] = (basinCounts[h.basin] || 0) + 1;
+        });
+        let mostActive = Object.keys(basinCounts).reduce((a, b) => basinCounts[a] > basinCounts[b] ? a : b);
+
+        // Average duration (if you have storm duration info)
+        let avgDuration = "-";
+        if (currentData[0].duration_hours !== undefined) {
+            let totalDuration = currentData.reduce((sum, h) => sum + (h.duration_hours || 0), 0);
+            avgDuration = (totalDuration / currentData.length).toFixed(1) + " hrs";
+        }
+
+        document.getElementById("meta-basin").innerText = mostActive;
+        document.getElementById("meta-duration").innerText = avgDuration;
+    }
+}
+
+// --- Simple chart rendering from currentData ---
+function renderChartsFromData(data) {
+    const ctxBar = document.getElementById('bar-chart').getContext('2d');
+    const ctxPie = document.getElementById('pie-chart').getContext('2d');
+
+    // Group hurricanes per basin
+    let basinCounts = {};
+    data.forEach(h => {
+        basinCounts[h.basin] = (basinCounts[h.basin] || 0) + 1;
+    });
+
+    const labels = Object.keys(basinCounts);
+    const values = Object.values(basinCounts);
+
+    // Destroy old charts if they exist
+    if (window.barChart) window.barChart.destroy();
+    if (window.pieChart) window.pieChart.destroy();
+
+    // Bar chart
+    window.barChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Hurricanes per Basin',
+                data: values,
+                backgroundColor: '#00cccc'
+            }]
+        },
+        options: { responsive: true }
+    });
+
+    // Pie chart
+    window.pieChart = new Chart(ctxPie, {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8']
+            }]
+        },
+        options: { responsive: true }
+    });
+}
+
+// Init
+initMap();
+fetchMapData();
+</script>
+</body>
+</html>

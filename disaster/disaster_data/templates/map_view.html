@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📍 Uploaded CSV Points - DisoPortal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+        }
+
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00ffff;
+            font-size: 24px;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        h2 {
+            text-align: center;
+            padding: 20px;
+            font-size: 28px;
+            color: #00cccc;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            margin: 20px auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.15);
+        }
+
+        .metadata-box {
+            width: 90%;
+            margin: 0 auto 30px;
+            background-color: #1f1f1f;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        .metadata-box h4 {
+            margin-top: 0;
+            color: #00ffff;
+            font-size: 20px;
+        }
+
+        #summary-list {
+            list-style: none;
+            padding-left: 0;
+            font-size: 16px;
+        }
+
+        #summary-list li {
+            margin-bottom: 10px;
+            color: #dddddd;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CSRF Token -->
+    {% csrf_token %}
+
+    <!-- ✅ Loader -->
+    <div id="loader">⏳ Loading map data...</div>
+
+    <h2>📍 Uploaded Points Map</h2>
+    
+    <!-- Save Table Controls -->
+    <div style="text-align: center; margin: 20px 0;">
+        <div style="display: inline-block; background-color: #1f1f1f; padding: 20px; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);">
+            <h4 style="margin: 0 0 15px 0; color: #00ffff;">💾 Save to Database</h4>
+            <input type="text" id="table-name" placeholder="Enter table name" 
+                   style="padding: 8px 12px; margin-right: 10px; background-color: #101d29; color: #ffffff; border: 1px solid #00cccc; border-radius: 5px; width: 200px;">
+            <select id="table-category" style="padding: 8px 12px; margin-right: 10px; background-color: #101d29; color: #ffffff; border: 1px solid #00cccc; border-radius: 5px;">
+                <option value="landslide">Landslide</option>
+                <option value="earthquake">Earthquake</option>
+                <option value="hurricane">Hurricane</option>
+                <option value="other">Other</option>
+            </select>
+            <button onclick="saveTable()" style="padding: 8px 16px; background-color: #00cccc; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                💾 Save Table
+            </button>
+            <br><br>
+            <a href="/my-uploads/" style="color: #00cccc; text-decoration: none; font-size: 14px;">
+                📁 View My Uploads
+            </a>
+        </div>
+    </div>
+    
+    <div id="map"></div>
+
+    <div class="metadata-box" id="metadata">
+        <h4>📊 Metadata Summary</h4>
+        <ul id="summary-list">
+            <li>Loading...</li>
+        </ul>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([30, 70], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const table = "{{ table }}";
+        fetch(`/api/points/?table=${table}`)
+            .then(response => response.json())
+            .then(data => {
+                // ✅ Hide loader after data loads
+                document.getElementById("loader").style.display = "none";
+
+                const bounds = [];
+                const names = new Set();
+                const years = new Set();
+
+                data.forEach(point => {
+                    const lat = parseFloat(point.latitude);
+                    const lon = parseFloat(point.longitude);
+                    if (!isNaN(lat) && !isNaN(lon)) {
+                        L.circleMarker([lat, lon], {
+                            radius: 6,
+                            fillColor: "#00ffff",
+                            color: "#000",
+                            weight: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(
+                            `<strong>${point.name || "Unnamed"}</strong><br>Date: ${point.date || "N/A"}`
+                        );
+                        bounds.push([lat, lon]);
+
+                        if (point.name) names.add(point.name);
+                        if (point.date) years.add(point.date.split("-")[0]);
+                    }
+                });
+
+                if (bounds.length) {
+                    map.fitBounds(bounds);
+                }
+
+                const summaryList = document.getElementById("summary-list");
+                summaryList.innerHTML = `
+                    <li><strong>Total Points:</strong> ${data.length}</li>
+                    <li><strong>Unique Names:</strong> ${names.size}</li>
+                    <li><strong>Years Covered:</strong> ${[...years].sort().join(', ') || "N/A"}</li>
+                `;
+                
+                // Store data globally for save function
+                window.uploadedData = data;
+            });
+            
+        // Save table function
+        function saveTable() {
+            const tableName = document.getElementById('table-name').value.trim();
+            const category = document.getElementById('table-category').value;
+            
+            if (!tableName) {
+                alert('Please enter a table name!');
+                return;
+            }
+            
+            if (!window.uploadedData || window.uploadedData.length === 0) {
+                alert('No data to save!');
+                return;
+            }
+            
+            // Show loading state
+            const saveBtn = event.target;
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = '⏳ Saving...';
+            saveBtn.disabled = true;
+            
+            // Prepare data for saving
+            const saveData = {
+                name: tableName,
+                category: category,
+                data: window.uploadedData
+            };
+            
+            // Send to save endpoint
+            fetch('/save-table/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify(saveData)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(`✅ Table "${tableName}" saved successfully!\n\nYou can view it in your uploads.`);
+                    // Clear the form
+                    document.getElementById('table-name').value = '';
+                } else {
+                    alert(`❌ Error saving table: ${result.message}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ Error saving table. Please try again.');
+            })
+            .finally(() => {
+                // Restore button state
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>

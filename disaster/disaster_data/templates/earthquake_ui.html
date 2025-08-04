@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DisoPortal: Earthquake Dashboard</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 10, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 6px solid #00cccc;
+            border-top: 6px solid transparent;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #00cccc;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+        }
+
+        .controls label {
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        select {
+            padding: 6px 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #00cccc;
+            background-color: #101d29;
+            color: #ffffff;
+        }
+
+        /* Map will have height set dynamically by JS */
+        #map {
+            width: 90%;
+            margin: 0 auto 20px;
+        }
+
+        #chart-section {
+            display: none;
+            padding: 20px;
+        }
+
+        #chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        #chart-container canvas {
+            background: rgba(16, 29, 41, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            max-width: 400px;
+            max-height: 300px;
+            width: 45%;
+            min-width: 350px;
+        }
+
+        #metadata-section {
+            display: none;
+            padding: 20px;
+        }
+
+        #metadata-box {
+            background: rgba(16, 29, 41, 0.8);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 0 auto;
+            max-width: 600px;
+            border: 2px solid #00cccc;
+        }
+
+        #metadata-text p {
+            margin: 15px 0;
+            font-size: 16px;
+            color: #ffffff;
+        }
+
+        #metadata-text strong {
+            color: #00ffff;
+        }
+
+        .card-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card-button {
+            background-color: #00cccc;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+            color: black;
+        }
+
+        .card-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        .download-btn {
+            display: inline-block;
+            background-color: #00cccc;
+            color: #000;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+            transition: background 0.3s, transform 0.2s;
+            font-size: 14px;
+        }
+
+        .download-btn:hover {
+            background-color: #00ffff;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Full Page Loader -->
+<div id="loader">
+    <div class="spinner"></div>
+</div>
+
+<header>DisoPortal: Earthquake Dashboard</header>
+
+<div class="controls">
+    <label for="year-select">Filter by Year:</label>
+    <select id="year-select">
+        <option value="">All Years</option>
+    </select>
+</div>
+
+<div id="map"></div>
+
+<div style="text-align:center; margin: 20px 0;">
+    <a href="{% url 'download_earthquake_csv' %}" class="download-btn">⬇️ Download Earthquake CSV</a>
+</div>
+
+<div class="card-buttons">
+    <div class="card-button" onclick="showSection('chart')">📊 View Graphs</div>
+    <div class="card-button" onclick="showSection('metadata')">📄 View Metadata</div>
+</div>
+
+<div id="chart-section">
+    <div id="chart-container">
+        <canvas id="bar-chart"></canvas>
+        <canvas id="pie-chart"></canvas>
+    </div>
+</div>
+
+<div id="metadata-section">
+    <div id="metadata-box">
+        <div id="metadata-text">
+            <p><strong>Total Earthquakes:</strong> <span id="meta-total">-</span></p>
+            <p><strong>Most Affected Area:</strong> <span id="meta-place">-</span></p>
+            <p><strong>Average Magnitude:</strong> <span id="meta-avg-mag">-</span></p>
+        </div>
+        <button class="download-btn" onclick="downloadMetadata()">Download</button>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+let currentData = [];
+let map;
+let markerClusterGroup;
+
+function adjustMapHeight() {
+    const headerHeight = document.querySelector('header')?.offsetHeight || 0;
+    const controlsHeight = document.querySelector('.controls')?.offsetHeight || 0;
+    const buttonsHeight = document.querySelector('.card-buttons')?.offsetHeight || 0;
+
+    const availableHeight = window.innerHeight - (headerHeight + controlsHeight + buttonsHeight + 40);
+    document.getElementById('map').style.height = availableHeight + 'px';
+
+    if (map) map.invalidateSize();
+}
+window.addEventListener('load', adjustMapHeight);
+window.addEventListener('resize', adjustMapHeight);
+
+function initMap() {
+    map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    markerClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 50,
+        disableClusteringAtZoom: 8
+    });
+    map.addLayer(markerClusterGroup);
+}
+initMap();
+fetchMapData();
+
+async function loadYears() {
+    try {
+        const response = await fetch('/api/earthquakes/available_years/');
+        const years = await response.json();
+        const yearSelect = document.getElementById('year-select');
+        
+        // Clear existing options except "All Years"
+        yearSelect.innerHTML = '<option value="">All Years</option>';
+        
+        // Add year options
+        years.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading years:', error);
+    }
+}
+
+async function fetchMapData(year = null) {
+    const url = year ? `/api/earthquakes/?year=${year}` : `/api/earthquakes/`;
+    const res = await fetch(url);
+    const data = await res.json();
+    currentData = Array.isArray(data) ? data : [];
+    renderMap(currentData);
+    document.getElementById("loader").style.display = "none";
+}
+
+function renderMap(data) {
+    markerClusterGroup.clearLayers();
+    const bounds = L.latLngBounds();
+    data.forEach(eq => {
+        const marker = L.circleMarker([eq.latitude, eq.longitude], {
+            radius: Math.max(2, eq.mag * 1.5),
+            fillColor: getMagnitudeColor(eq.mag),
+            color: '#333',
+            weight: 0.5,
+            fillOpacity: 0.6
+        }).bindPopup(`<b>Magnitude:</b> ${eq.mag}<br><b>Location:</b> ${eq.place}<br><b>Year:</b> ${eq.time}`);
+        markerClusterGroup.addLayer(marker);
+        bounds.extend([eq.latitude, eq.longitude]);
+    });
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [20, 20] });
+}
+
+function getMagnitudeColor(m) {
+    if (m >= 8) return '#FF0000';
+    if (m >= 6) return '#FF6600';
+    if (m >= 4) return '#FFCC00';
+    return '#00FF00';
+}
+
+function updateMetadata() {
+    console.log("Updating metadata...");
+    document.getElementById("meta-total").innerText = currentData.length;
+
+    if (currentData.length > 0) {
+        let avgMag = (currentData.reduce((sum, eq) => sum + eq.mag, 0) / currentData.length).toFixed(2);
+        let placeCounts = {};
+        currentData.forEach(eq => {
+            placeCounts[eq.place] = (placeCounts[eq.place] || 0) + 1;
+        });
+        let mostAffected = Object.keys(placeCounts).reduce((a, b) => placeCounts[a] > placeCounts[b] ? a : b);
+
+        document.getElementById("meta-place").innerText = mostAffected;
+        document.getElementById("meta-avg-mag").innerText = avgMag;
+    } else {
+        document.getElementById("meta-place").innerText = "-";
+        document.getElementById("meta-avg-mag").innerText = "-";
+    }
+}
+
+
+function showSection(section) {
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('chart-section').style.display = 'none';
+    document.getElementById('metadata-section').style.display = 'none';
+
+    if (section === 'chart') {
+        console.log("📊 Opening chart section...");
+        document.getElementById('chart-section').style.display = 'block';
+        fetchChartData(); // ✅ now load chart data when clicking button
+    }
+    else if (section === 'metadata') {
+        console.log("📄 Opening metadata section...");
+        document.getElementById('metadata-section').style.display = 'block';
+        updateMetadata(); // ✅ if you have a metadata update function
+    }
+    else {
+        document.getElementById('map').style.display = 'block';
+    }
+}
+
+
+let barChart, pieChart;
+
+async function fetchChartData(year = null) {
+    console.log("Fetching chart data...");
+    const url = year ? `/api/earthquake_charts/?year=${year}` : `/api/earthquake_charts/`;
+    const res = await fetch(url);
+    const data = await res.json();
+    console.log("Chart data received:", data);
+    renderBarChart(data.bar);
+    renderPieChart(data.pie);
+}
+
+function renderBarChart(barData) {
+    const ctx = document.getElementById('bar-chart').getContext('2d');
+    if (barChart) barChart.destroy();
+    barChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: barData.labels,
+            datasets: [{
+                label: 'Earthquakes per Year',
+                data: barData.values,
+                backgroundColor: '#00cccc'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+
+function renderPieChart(pieData) {
+    const ctx = document.getElementById('pie-chart').getContext('2d');
+    if (pieChart) pieChart.destroy();
+    pieChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: pieData.labels,
+            datasets: [{
+                data: pieData.values,
+                backgroundColor: ['#00cccc', '#ffcc00', '#ff6600', '#ff0000']
+            }]
+        },
+        options: { responsive: true }
+    });
+}
+
+// Load both map + charts on first load
+window.addEventListener('load', () => {
+    loadYears(); // Load years first
+    fetchMapData();
+    fetchChartData();
+    
+    // Add event listener for year select
+    document.getElementById('year-select').addEventListener('change', function() {
+        const selectedYear = this.value;
+        fetchMapData(selectedYear || null);
+    });
+});
+
+
+function downloadMetadata() {
+    const metadata = {
+        total_earthquakes: currentData.length,
+        generated_at: new Date().toISOString()
+    };
+
+    console.log("📄 Metadata downloaded:", metadata);
+
+    // Create a downloadable file
+    const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'earthquake_metadata.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+
+
+</script>
+</body>
+</html>

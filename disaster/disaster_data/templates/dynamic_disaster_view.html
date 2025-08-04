@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ disaster_info.display_name }} Dashboard</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+        }
+
+        /* Loader Overlay */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 10, 10, 0.9);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 6px solid #00cccc;
+            border-top: 6px solid transparent;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0%   { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            background: transparent;
+            font-size: 28px;
+            font-weight: bold;
+            color: #00cccc;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 15px;
+            background-color: #1e1e1e;
+        }
+
+        .controls label {
+            font-weight: bold;
+            color: #00ffff;
+        }
+
+        select {
+            padding: 6px 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: 1px solid #00cccc;
+            background-color: #101d29;
+            color: #ffffff;
+        }
+
+        #map {
+            height: 70vh;
+            width: 90%;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+        }
+
+        .card-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card-button {
+            background-color: #00cccc;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border: none;
+            transition: transform 0.3s, box-shadow 0.3s;
+            color: black;
+        }
+
+        .card-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px #00ffff;
+        }
+
+        #chart-section, #metadata-section {
+            display: none;
+            width: 90%;
+            margin: 0 auto 30px;
+        }
+
+        #chart-container {
+            background-color: #1f1f1f;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+
+        canvas {
+            max-width: 450px;
+            max-height: 250px;
+            display: block;
+        }
+
+        #metadata-box {
+            background-color: #1f1f1f;
+            padding: 30px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+        }
+
+        #metadata-text {
+            flex: 1;
+            font-size: 1.2em;
+        }
+
+        .download-btn {
+            padding: 10px 18px;
+            background-color: #00b4d8;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: black;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #00cccc;
+            color: #000;
+            padding: 10px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Full Page Loader -->
+<div id="loader">
+    <div class="spinner"></div>
+</div>
+
+<!-- Back Button -->
+<a href="{% url 'home-ui' %}" class="back-btn">← Back to Home</a>
+
+<header>DisoPortal: {{ disaster_info.display_name }} Dashboard</header>
+
+<div class="controls">
+    <button class="download-btn" onclick="downloadData()">⬇️ Download {{ disaster_info.display_name }} CSV</button>
+</div>
+
+<div id="map"></div>
+
+<div class="card-buttons">
+    <div class="card-button" onclick="showSection('metadata')">📄 View Metadata</div>
+</div>
+
+<div id="metadata-section">
+    <div id="metadata-box">
+        <div id="metadata-text">
+            <p><strong>Total Events:</strong> <span id="meta-total">-</span></p>
+            <p><strong>Unique Locations:</strong> <span id="meta-locations">-</span></p>
+            <p><strong>Date Range:</strong> <span id="meta-date-range">-</span></p>
+        </div>
+        <button class="download-btn" onclick="downloadMetadata()">Download</button>
+    </div>
+</div>
+
+        <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([30, 70], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        const disasterType = '{{ disaster_type }}';
+        let markers = [];
+
+        // Load disaster data
+        console.log(`🔍 Loading data for disaster type: ${disasterType}`);
+        fetch(`/api/disaster-data/${disasterType}/`)
+            .then(res => res.json())
+            .then(data => {
+                console.log('📊 Received data:', data);
+                if (data.error) {
+                    console.error('Error loading data:', data.error);
+                    document.getElementById('loader').style.display = 'none';
+                    return;
+                }
+
+                const bounds = [];
+                const locations = new Set();
+                const dates = new Set();
+
+                data.features.forEach(feature => {
+                    const lat = feature.geometry.coordinates[1];
+                    const lon = feature.geometry.coordinates[0];
+                    const properties = feature.properties;
+
+                    // Create marker
+                    const marker = L.circleMarker([lat, lon], {
+                        radius: 6,
+                        fillColor: '#00ffff',
+                        color: '#000',
+                        weight: 1,
+                        fillOpacity: 0.8
+                    }).addTo(map);
+
+                    // Create popup content
+                    let popupContent = `<strong>${disasterType.charAt(0).toUpperCase() + disasterType.slice(1)} Event</strong><br>`;
+                    for (const [key, value] of Object.entries(properties)) {
+                        if (value !== null && value !== undefined) {
+                            popupContent += `<strong>${key}:</strong> ${value}<br>`;
+                        }
+                    }
+                    marker.bindPopup(popupContent);
+                    markers.push(marker);
+
+                    bounds.push([lat, lon]);
+                    locations.add(`${lat.toFixed(2)},${lon.toFixed(2)}`);
+                    
+                    // Try to extract date from properties
+                    for (const [key, value] of Object.entries(properties)) {
+                        if (key.toLowerCase().includes('date') || key.toLowerCase().includes('time')) {
+                            if (value) {
+                                const dateStr = value.toString().split(' ')[0]; // Get just the date part
+                                dates.add(dateStr);
+                            }
+                        }
+                    }
+                });
+
+                if (bounds.length > 0) {
+                    map.fitBounds(bounds);
+                }
+
+                // Update metadata
+                updateMetadata(data.features.length, locations.size, dates);
+
+                // Hide loader
+                document.getElementById('loader').style.display = 'none';
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('loader').style.display = 'none';
+                alert('Error loading disaster data. Please try again.');
+            });
+
+        function updateMetadata(totalEvents, uniqueLocations, dates) {
+            document.getElementById('meta-total').textContent = totalEvents;
+            document.getElementById('meta-locations').textContent = uniqueLocations;
+            
+            if (dates.size > 0) {
+                const dateArray = Array.from(dates).sort();
+                const dateRange = `${dateArray[0]} to ${dateArray[dateArray.length - 1]}`;
+                document.getElementById('meta-date-range').textContent = dateRange;
+            } else {
+                document.getElementById('meta-date-range').textContent = 'N/A';
+            }
+        }
+
+        function showSection(section) {
+            document.getElementById('metadata-section').style.display = section === 'metadata' ? 'block' : 'none';
+        }
+
+        function downloadData() {
+            // For now, redirect to my-uploads page
+            window.location.href = '/my-uploads/';
+        }
+
+        function downloadMetadata() {
+            const metadata = {
+                disaster_type: disasterType,
+                total_events: document.getElementById('meta-total').textContent,
+                unique_locations: document.getElementById('meta-locations').textContent,
+                date_range: document.getElementById('meta-date-range').textContent
+            };
+            const blob = new Blob([JSON.stringify(metadata, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${disasterType}_metadata.json`;
+            link.click();
+        }
+    </script>
+</body>
+</html> 

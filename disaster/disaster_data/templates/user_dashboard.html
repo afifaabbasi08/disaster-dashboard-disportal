@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Dashboard</title>
+    <style>
+        body {
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h1 {
+            color: #00ffff;
+            text-align: center;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .card {
+            background-color: #1f1f1f;
+            border-radius: 15px;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 1px solid #00cccc;
+            box-shadow: 0 0 15px rgba(0, 204, 204, 0.15);
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px #00cccc;
+        }
+
+        .card h3 {
+            color: #00ffff;
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+
+        .card p {
+            color: #cccccc;
+            font-size: 0.95em;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .back-home {
+            display: block;
+            margin-top: 30px;
+            text-align: center;
+            color: #00cccc;
+        }
+    </style>
+</head>
+<body>
+
+<h1>👤 Welcome, {{ user.username }}</h1>
+
+<div class="card-container">
+    <!-- My Uploads -->
+    <a href="{% url 'my_uploads' %}">
+        <div class="card">
+            <h3>📂 My Uploads</h3>
+            <p>See all the CSVs you've uploaded by disaster type.</p>
+        </div>
+    </a>
+
+    <!-- Earthquake Dashboard Access -->
+    <a href="{% url 'earthquake-ui' %}">
+        <div class="card">
+            <h3>🌍 Explore Earthquakes</h3>
+            <p>Access the earthquake dashboard for real-time data.</p>
+        </div>
+    </a>
+
+    <!-- Analytics -->
+    <a href="#">
+        <div class="card">
+            <h3>📊 Analytics & Graphs</h3>
+            <p>Visual summaries and interactive charts of disasters.</p>
+        </div>
+    </a>
+</div>
+
+<a class="back-home" href="{% url 'home-ui' %}">⬅ Back to Home</a>
+
+</body>
+</html>
+
+

@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DisoPortal</title>
+    <style>
+        html {
+            margin: 0;
+            height: 100%;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+        }
+
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: 'Segoe UI', sans-serif;
+            background: transparent;
+            color: #ffffff;
+        }
+
+        header {
+            background: transparent;
+            padding: 30px 0 10px;
+            text-align: center;
+            border-bottom: 2px solid #00cccc;
+            position: relative;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.8em;
+            color: #00cccc;
+        }
+
+        .user-auth {
+            position: absolute;
+            top: 30px;
+            right: 20px;
+            font-size: 0.9em;
+        }
+
+        .user-auth a {
+            color: #00ffcc;
+            text-decoration: none;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.2);
+            background: transparent;
+        }
+
+        .upload-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .upload-button,
+        .chatbot-button {
+            background-color: #00cccc;
+            color: #000000;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+            transition: background 0.3s, transform 0.2s;
+            font-size: 14px;
+        }
+
+        .upload-button:hover,
+        .chatbot-button:hover {
+            background-color: #00ffff;
+            transform: scale(1.05);
+        }
+
+        /* Carousel */
+        .carousel-section {
+            text-align: center;
+            padding: 50px 20px 40px;
+        }
+
+        .carousel-section h2 {
+            font-size: 2em;
+            color: #00ffff;
+            margin-bottom: 30px;
+        }
+
+        .carousel-container {
+            position: relative;
+            width: 90%;
+            max-width: 600px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .carousel-slide {
+            display: none;
+            background: rgba(0, 204, 204, 0.07);
+            border: 1px solid #00cccc;
+            border-left: 4px solid #00ffff;
+            border-radius: 14px;
+            padding: 20px 25px;
+            box-shadow: 0 0 18px rgba(0, 255, 255, 0.08);
+        }
+
+        .carousel-slide.active {
+            display: block;
+        }
+
+        .carousel-slide .title {
+            font-size: 1.2em;
+            color: #00ffff;
+            margin-bottom: 8px;
+        }
+
+        .carousel-slide .info {
+            font-size: 0.95em;
+            color: #cccccc;
+            line-height: 1.5em;
+        }
+
+        .carousel-arrow {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 255, 255, 0.25);
+            border: 2px solid #00ffff;
+            color: #ffffff;
+            font-size: 1.7em;
+            padding: 10px 14px;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background 0.3s, transform 0.3s;
+            user-select: none;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.8);
+        }
+
+        .carousel-arrow:hover {
+            background: #00ffff;
+            color: #000000;
+            transform: scale(1.2);
+        }
+
+        .arrow-left {
+            left: -45px;
+        }
+
+        .arrow-right {
+            right: -45px;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            text-align: center;
+            padding: 10px 20px 40px;
+        }
+
+        .dashboard h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #00ffff;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 30px;
+        }
+
+        .card {
+            background: rgba(0, 204, 204, 0.07);
+            border: 1px solid #00cccc;
+            border-left: 4px solid #00ffff;
+            border-radius: 14px;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            box-shadow: 0 0 18px rgba(0, 255, 255, 0.08);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px #00cccc;
+        }
+
+        .card p {
+            font-size: 0.95em;
+            color: #00ffff; /* same blue as heading */
+            line-height: 1.4em;
+        }
+
+        .card h3 {
+            font-size: 1.5em;
+            margin: 0 0 10px;
+            color: #00ffff; /* same blue as highlights heading */
+        }
+
+        /* Loading animation */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(0, 255, 255, 0.3);
+            border-top: 3px solid #00ffff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>DisoPortal</h1>
+        <div class="user-auth">
+            {% if user.is_authenticated %}
+                <span style="color: #00ffcc;">Welcome, {{ user.username }}!</span> |
+                <a href="{% url 'logout' %}">Logout</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a> |
+                <a href="{% url 'signup' %}">Sign up</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="upload-buttons">
+            <a href="{% url 'upload_csv' %}" class="upload-button">📁 Upload CSV</a>
+            <a href="{% url 'my_uploads' %}" class="upload-button">📂 My Uploads</a>
+        </div>
+        <div>
+            <a href="{% url 'chatbot' %}" class="chatbot-button">🤖 AI Assistance</a>
+        </div>
+    </div>
+
+    <!-- Carousel Section -->
+    <section class="carousel-section">
+        <h2>🌍 Recent Disaster Highlights</h2>
+        <div class="carousel-container" id="news-carousel-container">
+            <div class="carousel-slide active" id="news-loading-slide">
+                <div class="title">Loading latest disaster news...</div>
+                <div class="info">Please wait while we fetch real-time events.</div>
+            </div>
+        </div>
+        <div class="carousel-arrow arrow-left" onclick="changeSlide(-1)">‹</div>
+        <div class="carousel-arrow arrow-right" onclick="changeSlide(1)">›</div>
+    </section>
+
+    <!-- Dashboard Section -->
+    <section class="dashboard">
+        <h2>📊 Disaster Analytics</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <button onclick="refreshDisasterCards()" style="background: #00cccc; color: #000000; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                🔄 Refresh Disaster Cards
+            </button>
+        </div>
+        <div class="card-container" id="dynamic-cards-container">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading disaster types...</p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        let currentSlide = 0, slides = [];
+
+        function changeSlide(direction) {
+            if (!slides.length) return;
+            currentSlide = (currentSlide + direction + slides.length) % slides.length;
+            showSlide(currentSlide);
+        }
+
+        function showSlide(index) {
+            document.querySelectorAll('.carousel-slide').forEach(s => s.classList.remove('active'));
+            if (slides[index]) slides[index].classList.add('active');
+        }
+
+        function loadNewsCarousel() {
+            fetch('/api/latest-earthquakes/')
+                .then(res => res.json())
+                .then(data => {
+                    const container = document.getElementById('news-carousel-container');
+                    container.innerHTML = '';
+                    slides = [];
+                    if (!data.length) return;
+                    data.slice(0, 5).forEach((item, idx) => {
+                        const slide = document.createElement('div');
+                        slide.className = `carousel-slide ${idx === 0 ? 'active' : ''}`;
+                        slide.innerHTML = `<div class="title">🌍 ${item.place || 'Unknown'}</div>
+                                           <div class="info">Magnitude: ${item.mag || '?'} | Time: ${item.time || '?'}</div>`;
+                        container.appendChild(slide);
+                        slides.push(slide);
+                    });
+                });
+        }
+
+    function loadDynamicDisasterCards() {
+    fetch('/api/disaster-types/')
+        .then(res => res.json())
+        .then(types => {
+            const container = document.getElementById('dynamic-cards-container');
+            container.innerHTML = '';
+
+            if (!types || !types.length) {
+                container.innerHTML = '<p>No disaster data found yet.</p>';
+                return;
+            }
+
+            types.forEach(d => {
+                if (!d || d.value === 'other') return; // skip "Other" and invalid entries
+
+                const card = document.createElement('a');
+                // Map table names to URL patterns
+                const urlMapping = {
+                    'earthquake_data': '/earthquake-ui/',
+                    'disaster_landslide': '/landslide-ui/',
+                    'hurricane_data': '/hurricane-ui/'
+                };
+                
+                // For custom disaster types, use the custom- prefix
+                let cardUrl;
+                if (urlMapping[d.value]) {
+                    cardUrl = urlMapping[d.value];
+                } else {
+                    // This is a custom disaster type
+                    cardUrl = `/custom-${d.value}-ui/`;
+                }
+                card.href = cardUrl;
+                card.style.textDecoration = 'none';
+                card.innerHTML = `
+                    <div class="card">
+                        <h3>${d.icon || '❓'} ${d.display_name || d.value}</h3>
+                        <p>${d.description || `View ${d.display_name || d.value} data`}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        })
+        .catch(err => {
+            console.error("Error loading disaster cards:", err);
+            document.getElementById('dynamic-cards-container').innerHTML = '<p>Error loading cards.</p>';
+        });
+}
+
+function refreshDisasterCards() {
+    console.log("Refreshing disaster cards...");
+    loadDynamicDisasterCards();
+}
+document.addEventListener('DOMContentLoaded', () => {
+    loadNewsCarousel();
+    loadDynamicDisasterCards();
+    setInterval(() => changeSlide(1), 4000);
+});
+ </script>
+</body>
+</html>

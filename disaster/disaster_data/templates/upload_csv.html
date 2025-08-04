@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>📤 Upload CSV - DisoPortal</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 10px 15px;
+            color: #00cccc;
+            font-size: 28px;
+            border-bottom: 2px solid #00cccc;
+        }
+
+        .upload-container {
+            width: 90%;
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: #1e1e1e;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+        }
+
+        h2 {
+            text-align: center;
+            color: #00ffff;
+            margin-bottom: 25px;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            background-color: #101d29;
+            color: #ffffff;
+            border: 1px solid #00cccc;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+
+        input[type="submit"] {
+            background-color: #00cccc;
+            color: black;
+            padding: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #00ffff;
+            transform: scale(1.03);
+        }
+
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .back-link a {
+            color: #00cccc;
+            text-decoration: none;
+        }
+
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Loader Styles */
+        #loader-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 10, 0.85);
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            border: 6px solid #00cccc;
+            border-top: 6px solid transparent;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loader-text {
+            margin-top: 20px;
+            color: #00ffff;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+
+<header>📤 Upload CSV to Map Your Data</header>
+
+<!-- Loader Overlay -->
+<div id="loader-overlay">
+    <div style="text-align: center;">
+        <div class="spinner"></div>
+        <div class="loader-text">Processing CSV... Please wait</div>
+    </div>
+</div>
+
+<!-- Upload Form -->
+<div class="upload-container">
+    <h2>📤 Upload & Save CSV Data</h2>
+    
+    <!-- File Upload Section -->
+    <div style="margin-bottom: 30px; padding: 20px; background-color: #1f1f1f; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);">
+        <h4 style="margin: 0 0 15px 0; color: #00ffff;">📁 Choose Your CSV File</h4>
+        <input type="file" id="csv_file" name="file" accept=".csv" required 
+               style="width: 100%; padding: 12px; background-color: #101d29; color: #ffffff; border: 2px dashed #00cccc; border-radius: 8px; font-size: 15px;">
+    </div>
+    
+    <!-- Save Table Section -->
+    <div style="margin-bottom: 30px; padding: 20px; background-color: #1f1f1f; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);">
+        <h4 style="margin: 0 0 15px 0; color: #00ffff;">💾 Save to Database</h4>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="table-name" placeholder="Enter table name" 
+                   style="padding: 8px 12px; background-color: #101d29; color: #ffffff; border: 1px solid #00cccc; border-radius: 5px; width: 200px;">
+            <select id="table-category" style="padding: 8px 12px; background-color: #101d29; color: #ffffff; border: 1px solid #00cccc; border-radius: 5px;">
+                <option value="">Loading disaster types...</option>
+            </select>
+            <button onclick="uploadAndSave()" style="padding: 8px 16px; background-color: #00cccc; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                📤 Upload & Save
+            </button>
+        </div>
+        <div style="margin-top: 10px;">
+            <a href="/my-uploads/" style="color: #00cccc; text-decoration: none; font-size: 14px;">
+                📁 View My Uploads
+            </a>
+        </div>
+        <input type="text" id="custom-category" placeholder="Enter new disaster type" 
+            style="display:none; padding: 5px; margin-top: 5px;">
+
+    </div>
+    
+    <!-- Hidden form for CSRF token -->
+    <form id="upload-form" method="POST" enctype="multipart/form-data" style="display: none;">
+        {% csrf_token %}
+    </form>
+    
+    <!-- Upload Status -->
+    <div id="upload-status" style="margin-top: 20px; padding: 15px; border-radius: 8px; display: none;"></div>
+    
+    <!-- Map Preview Section -->
+    <div id="map-preview-section" style="margin-top: 30px; display: none;">
+        <div style="padding: 20px; background-color: #1f1f1f; border-radius: 15px; box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);">
+            <h4 style="margin: 0 0 15px 0; color: #00ffff;">🗺️ Uploaded Data Preview</h4>
+            <div id="map" style="height: 400px; border-radius: 8px;"></div>
+            <div style="margin-top: 15px; text-align: center;">
+                <a href="/landslide-ui/" style="color: #00ffff; text-decoration: none; font-weight: bold;">
+                    🔍 View Full Map with All Data
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Link -->
+<div class="back-link">
+    <a href="/">← Back to Home</a>
+</div>
+
+<!-- Script to Show Loader and File Preview -->
+<script>
+    function showLoader() {
+    document.getElementById('loader-overlay').style.display = 'flex';
+}
+
+    // Load dynamic disaster types on page load
+   function loadDisasterTypes() {
+    fetch('/api/disaster-types/?for=dropdown')
+        .then(res => res.json())
+        .then(types => {
+            const select = document.getElementById('table-category');
+            select.innerHTML = '';
+
+            // Add API categories
+            types.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.value;
+                option.textContent = `${t.icon || ''} ${t.display_name || t.value}`;
+                select.appendChild(option);
+            });
+
+            // Always add "Other" at the bottom
+            const otherOption = document.createElement('option');
+            otherOption.value = 'other';
+            otherOption.textContent = '➕ Other (Create New)';
+            select.appendChild(otherOption);
+        })
+        .catch(err => {
+            console.error("Error loading disaster types:", err);
+        });
+}
+
+
+document.addEventListener('DOMContentLoaded', loadDisasterTypes);
+
+
+// Show/hide custom category field
+document.getElementById('table-category').addEventListener('change', function() {
+    const customField = document.getElementById('custom-category');
+    if (this.value === 'other') {
+        customField.style.display = 'block';
+    } else {
+        customField.style.display = 'none';
+    }
+});
+
+    function uploadAndSave() {
+    const fileInput = document.getElementById('csv_file');
+    let category = document.getElementById('table-category').value;
+
+    if (!fileInput.files[0]) {
+        alert('Please select a CSV file!');
+        return;
+    }
+    if (!category) {
+        alert('Please select a disaster type!');
+        return;
+    }
+
+    if (category === 'other') {
+        category = document.getElementById('custom-category').value.trim();
+        if (!category) {
+            alert('Please enter a custom disaster type!');
+            return;
+        }
+    }
+
+    category = category.toLowerCase().replace(/\s+/g, '_'); // normalize table name
+
+    showLoader();
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+    fetch(`/upload/${category}/`, {  // ✅ Now dynamic
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('loader-overlay').style.display = 'none';
+        if (data.success) {
+            alert(data.message);
+            loadDisasterTypes(); // reload dropdown so new disaster appears
+            fileInput.value = '';
+            document.getElementById('custom-category').value = '';
+        } else {
+            alert(data.message || 'Upload failed!');
+        }
+    })
+    .catch(err => {
+        document.getElementById('loader-overlay').style.display = 'none';
+        console.error('Upload failed:', err);
+        alert('An error occurred while uploading.');
+    });
+}
+    
+
+    function saveToDatabase(tableName, category, uploadData) {
+        // Create a simple dataset entry
+        const saveData = {
+            name: tableName,
+            category: category,
+            data: [] // We'll create a simple entry since we don't have the actual point data
+        };
+        
+        console.log('Saving to database:', saveData);
+        console.log('CSRF Token:', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        return fetch('/save-table/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(saveData)
+        })
+        .then(response => {
+            console.log('Save response status:', response.status);
+            return response.json();
+        })
+        .then(result => {
+            console.log('Save result:', result);
+            return result;
+        });
+    }
+
+    function showMapPreview() {
+        // Show the map section
+        document.getElementById('map-preview-section').style.display = 'block';
+        
+        // Initialize map
+        const map = L.map('map').setView([30, 70], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Fetch and display the uploaded data
+        fetch('/api/landslides/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.features && data.features.length > 0) {
+                    const bounds = [];
+                    
+                    data.features.forEach(feature => {
+                        const coords = feature.geometry.coordinates;
+                        const lat = coords[1];
+                        const lng = coords[0];
+                        
+                        L.circleMarker([lat, lng], {
+                            radius: 4,
+                            fillColor: "#00ffff",
+                            color: "#000",
+                            weight: 1,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(
+                            `<strong>${feature.properties.event_title || "Unknown"}</strong><br>
+                             Date: ${feature.properties.event_date || "N/A"}<br>
+                             Location: ${feature.properties.location || "Unknown"}`
+                        );
+                        
+                        bounds.push([lat, lng]);
+                    });
+                    
+                    if (bounds.length > 0) {
+                        map.fitBounds(bounds, { padding: [20, 20] });
+                    }
+                } else {
+                    // If no data, show a message
+                    map.setView([30, 70], 5);
+                    L.popup([30, 70], {
+                        content: 'No data points found. Try refreshing the page.',
+                        closeButton: false
+                    }).openOn(map);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading map data:', error);
+                map.setView([30, 70], 5);
+                L.popup([30, 70], {
+                    content: 'Error loading data. Please try again.',
+                    closeButton: false
+                }).openOn(map);
+            });
+    }
+
+    // Show file preview when file is selected
+    document.getElementById('csv_file').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            console.log('File selected:', file.name, 'Size:', file.size, 'bytes');
+        }
+    });
+
+    // Load disaster types when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        loadDisasterTypes();
+    });
+</script>
+
+</body>
+</html>

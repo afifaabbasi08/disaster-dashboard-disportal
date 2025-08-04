@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Landslide Dashboard</title>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+      color: #ffffff;
+    }
+
+    header {
+      text-align: center;
+      padding: 20px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #00cccc;
+      border-bottom: 2px solid #00cccc;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 15px;
+      background-color: #1e1e1e;
+    }
+
+    .controls label {
+      font-weight: bold;
+      color: #00ffff;
+      align-self: center;
+    }
+
+    select {
+      padding: 6px 10px;
+      font-size: 14px;
+      border-radius: 5px;
+      border: 1px solid #00cccc;
+      background-color: #101d29;
+      color: #ffffff;
+      cursor: pointer;
+    }
+
+    #map {
+      height: 65vh;
+      width: 90%;
+      margin: 20px auto;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.2);
+    }
+
+    #legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.85);
+      border-radius: 8px;
+      padding: 15px;
+      font-size: 12px;
+      color: white;
+      z-index: 1000;
+      max-width: 200px;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(0, 255, 255, 0.3);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    .legend-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #00cccc;
+      text-align: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+      font-size: 11px;
+    }
+
+    .legend-color {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 8px;
+      border: 1px solid #333;
+    }
+
+    .legend-size-info {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #333;
+      font-size: 10px;
+      color: #ccc;
+    }
+
+    .card-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+
+    .card-button {
+      background-color: #00cccc;
+      padding: 20px;
+      width: 250px;
+      text-align: center;
+      border-radius: 15px;
+      cursor: pointer;
+      font-weight: bold;
+      border: none;
+      transition: transform 0.3s, box-shadow 0.3s;
+      color: black;
+      user-select: none;
+    }
+
+    .card-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px #00ffff;
+    }
+
+    #chart-section,
+    #metadata-section {
+      display: none;
+      width: 90%;
+      margin: 0 auto 30px;
+    }
+
+    #chart-container {
+      background-color: #1f1f1f;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-around;
+      gap: 30px;
+    }
+
+    .chart-box {
+      max-width: 45%;
+      flex: 1 1 45%;
+    }
+
+    canvas {
+      width: 100% !important;
+      max-height: 300px;
+    }
+
+    #metadata-box {
+      background-color: #1f1f1f;
+      padding: 30px;
+      border-radius: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
+      flex-wrap: wrap;
+    }
+
+    #metadata-text {
+      flex: 1 1 auto;
+      font-size: 1.2em;
+      color: #00ffff;
+      min-width: 250px;
+    }
+
+    .download-btn {
+      padding: 10px 18px;
+      background-color: #00b4d8;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+      color: black;
+      user-select: none;
+      margin-top: 10px;
+    }
+
+    /* Loader Styles */
+    #loader-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      background-color: rgba(10, 10, 10, 0.9);
+      z-index: 9999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .spinner {
+      border: 6px solid #00cccc;
+      border-top: 6px solid transparent;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    .loader-text {
+      margin-top: 20px;
+      font-size: 1.2em;
+      color: #00ffff;
+      font-weight: bold;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Risk Score Button */
+    #risk-score-btn {
+      background-color: #069494; 
+      color: white; 
+      padding: 10px 16px; 
+      text-decoration: none; 
+      border-radius: 8px; 
+      font-weight: bold;
+      box-shadow: 0 0 12px rgba(5, 248, 187, 0.7);
+      user-select: none;
+    }
+#risk-score-btn:hover {
+  background-color: #048181;
+}
+
+
+  </style>
+</head>
+<body>
+
+<!-- Risk Score Button below header -->
+ <div class="d-flex justify-content-center mt-3">
+    <a href="{% url 'risk_landslide_future' %}" 
+       class="btn btn-danger btn-lg shadow-sm px-4">
+       🚨 Risk Score
+    </a>
+</div>
+
+
+
+<!-- Loader -->
+<div id="loader-overlay">
+  <div class="spinner"></div>
+  <div class="loader-text">Loading Dashboard...</div>
+</div>
+
+<header>DisoPortal: Landslide Dashboard</header>
+
+<div class="controls">
+  <label for="yearSelect">Year:</label>
+  <select id="yearSelect"><option value="all">All</option></select>
+
+  <label for="triggerSelect">Trigger:</label>
+  <select id="triggerSelect"><option value="all">All</option></select>
+</div>
+
+<div id="map"></div>
+
+<div id="legend">
+  <div class="legend-title" onclick="toggleLegend()" style="cursor: pointer;" title="Click to toggle legend">
+    Landslide Triggers <span style="font-size: 10px;">(click to hide)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #FF6B6B;"></div>
+    <span>Heavy Rain</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #4ECDC4;"></div>
+    <span>Rain</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #FFE66D;"></div>
+    <span>Earthquake</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #FF8E53;"></div>
+    <span>Volcanic</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #A8E6CF;"></div>
+    <span>Snow</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #45B7D1;"></div>
+    <span>Flood</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #DDA0DD;"></div>
+    <span>Drought</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #98D8C8;"></div>
+    <span>Mining</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #FFB6C1;"></div>
+    <span>Construction</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #90EE90;"></div>
+    <span>Deforestation</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #00FF00;"></div>
+    <span>Other</span>
+  </div>
+  <div class="legend-size-info">
+    <strong>Size:</strong> Based on fatality count<br>
+    Larger = More fatalities
+  </div>
+</div>
+
+<div style="text-align:center; margin: 20px 0;">
+  <a href="{% url 'download_landslide_csv' %}" class="download-btn">⬇️ Download Landslide CSV</a>
+</div>
+
+<div class="card-buttons">
+  <button class="card-button" onclick="showSection('chart')">📊 View Graphs</button>
+  <button class="card-button" onclick="showSection('metadata')">📄 View Metadata</button>
+  <!-- <button id="heatmapToggle" class="card-button">🔥 Show Heatmap</button>-->
+
+</div>
+
+<div id="chart-section">
+  <div id="chart-container">
+    <div class="chart-box"><canvas id="landslideYearChart"></canvas></div>
+    <div class="chart-box"><canvas id="triggerPieChart"></canvas></div>
+  </div>
+</div>
+
+<div id="metadata-section">
+  <div id="metadata-box">
+    <div id="metadata-text">
+      <p><strong>Total Landslides:</strong> <span id="meta-total">-</span></p>
+      <p><strong>Most Common Trigger:</strong> <span id="meta-trigger">-</span></p>
+    </div>
+    <button class="download-btn" onclick="downloadMetadata()">Download Metadata</button>
+  </div>
+</div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+<script>
+
+  const loader = document.getElementById('loader-overlay');
+  const map = L.map('map').setView([30.3753, 69.3451], 5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  let markerClusterGroup;
+  let fullData = [];
+  let heatLayer; // to store the heatmap layer
+
+function loadHeatmap(year = 'all', trigger = 'all') {
+    let url = `/api/landslide-heatmap/?year=${year}&trigger=${trigger}`;
+    console.log("Fetching heatmap from:", url);
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            const heatData = data.map(d => [d.lat, d.lon, d.risk]);
+            
+            // Remove old heatmap layer if it exists
+            if (heatLayer) {
+                map.removeLayer(heatLayer);
+            }
+
+            // Create new heatmap
+            heatLayer = L.heatLayer(heatData, {
+                radius: 15,
+                blur: 20,
+                minOpacity: 0.5
+            }).addTo(map);
+        })
+        .catch(err => console.error("Error loading heatmap:", err));
+}
+
+  const yearSelect = document.getElementById('yearSelect');
+  const triggerSelect = document.getElementById('triggerSelect');
+
+  function populateYearDropdown(trigger = 'all') {
+    let url = '/api/landslides/available_years/';
+    if (trigger !== 'all') url += `?trigger=${trigger}`;
+
+    console.log('Fetching years from:', url);
+    fetch(url)
+      .then(res => {
+        console.log('Years response status:', res.status);
+        return res.json();
+      })
+      .then(years => {
+        console.log('Years data:', years);
+        yearSelect.innerHTML = '<option value="all">All</option>';
+        years.forEach(year => {
+          const opt = document.createElement('option');
+          opt.value = year;
+          opt.textContent = year;
+          yearSelect.appendChild(opt);
+        });
+      })
+      .catch(e => console.error("Error loading years:", e));
+  }
+
+  function populateTriggerDropdown(year = 'all') {
+    let url = '/api/landslides/triggers/';
+    if (year !== 'all') url += `?year=${year}`;
+
+    console.log('Fetching triggers from:', url);
+    fetch(url)
+      .then(res => {
+        console.log('Triggers response status:', res.status);
+        return res.json();
+      })
+      .then(triggers => {
+        console.log('Triggers data:', triggers);
+        triggerSelect.innerHTML = '<option value="all">All</option>';
+        triggers.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t;
+          opt.textContent = t;
+          triggerSelect.appendChild(opt);
+        });
+      })
+      .catch(e => console.error("Error loading triggers:", e));
+  }
+
+  function loadLandslideData() {
+    loader.style.display = 'flex';
+
+    let url = '/api/landslides/?';
+    const year = yearSelect.value;
+    const trigger = triggerSelect.value;
+    if (year !== 'all') url += `year=${year}&`;
+    if (trigger !== 'all') url += `trigger=${trigger}`;
+
+    console.log('Fetching landslide data from:', url);
+    fetch(url)
+      .then(res => {
+        console.log('Landslide data response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('Landslide data:', data);
+        fullData = data.features || [];
+        console.log('Number of features:', fullData.length);
+
+        // Clear existing markers
+        if (markerClusterGroup) {
+          map.removeLayer(markerClusterGroup);
+        }
+
+        // Create marker cluster group
+        markerClusterGroup = L.markerClusterGroup({
+          chunkedLoading: true,
+          maxClusterRadius: 50
+        });
+
+        // Create bounds for auto-zoom
+        const bounds = L.latLngBounds();
+
+        fullData.forEach(feature => {
+          const p = feature.properties;
+          const lat = feature.geometry.coordinates[1];
+          const lng = feature.geometry.coordinates[0];
+
+          // Skip invalid coordinates
+          if (!lat || !lng || isNaN(lat) || isNaN(lng)) {
+            return;
+          }
+
+          // Calculate marker size based on fatalities
+          const fatalityCount = p.fatality_count || 0;
+          const radius = Math.max(3, Math.min(8, fatalityCount * 0.5 + 3));
+
+          const marker = L.circleMarker([lat, lng], {
+            radius: radius,
+            fillColor: getTriggerColor(p.landslide_trigger),
+            color: '#333',
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0.6
+          });
+
+          marker.bindPopup(`
+            <div style="font-family: Arial, sans-serif; font-size: 12px;">
+              <strong>Event:</strong> ${p.event_title || 'Unknown'}<br>
+              <strong>Trigger:</strong> ${p.landslide_trigger || 'Unknown'}<br>
+              <strong>Category:</strong> ${p.landslide_category || 'Unknown'}<br>
+              <strong>Country:</strong> ${p.country_name || 'Unknown'}<br>
+              <strong>Date:</strong> ${p.event_date || 'Unknown'}<br>
+              <strong>Fatalities:</strong> ${p.fatality_count || 0}<br>
+              <strong>Injuries:</strong> ${p.injury_count || 0}
+            </div>
+          `);
+
+          markerClusterGroup.addLayer(marker);
+          bounds.extend([lat, lng]);
+        });
+
+        // Add cluster group to map
+        map.addLayer(markerClusterGroup);
+
+        // Auto-zoom to fit all markers
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [20, 20] });
+        } else {
+          // Reset to default view if no valid bounds
+          map.setView([30.3753, 69.3451], 5);
+        }
+
+        updateMetadata(fullData);
+        updatePieChart(fullData);
+        updateLegend(fullData);
+
+        loader.style.display = 'none';
+      })
+      .catch(e => {
+        console.error("Error loading landslide data:", e);
+        loader.style.display = 'none';
+      });
+  }
+
+  function showSection(section) {
+    document.getElementById('chart-section').style.display = section === 'chart' ? 'block' : 'none';
+    document.getElementById('metadata-section').style.display = section === 'metadata' ? 'block' : 'none';
+    if (section === 'chart') loadLandslidesPerYear();
+  }
+
+  function updateMetadata(features) {
+    document.getElementById('meta-total').textContent = features.length;
+    const freq = {};
+    features.forEach(f => {
+      const t = f.properties.landslide_trigger;
+      freq[t] = (freq[t] || 0) + 1;
+    });
+    const max = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+    document.getElementById('meta-trigger').textContent = max ? max[0] : '-';
+  }
+
+  function downloadMetadata() {
+    const data = {
+      total_landslides: document.getElementById('meta-total').textContent,
+      common_trigger: document.getElementById('meta-trigger').textContent
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'landslide_metadata.json';
+    link.click();
+  }
+
+  function getTriggerColor(trigger) {
+    const colors = {
+      'Heavy Rain': '#FF6B6B',
+      'Rain': '#4ECDC4',
+      'Earthquake': '#FFE66D',
+      'Volcanic': '#FF8E53',
+      'Snow': '#A8E6CF',
+      'Flood': '#45B7D1',
+      'Drought': '#DDA0DD',
+      'Mining': '#98D8C8',
+      'Construction': '#FFB6C1',
+      'Deforestation': '#90EE90'
+    };
+    return colors[trigger] || '#00FF00';
+  }
+
+  function updateLegend(features) {
+    const legend = document.getElementById('legend');
+    
+    // Get unique triggers from the data
+    const triggers = [...new Set(features.map(f => f.properties.landslide_trigger).filter(t => t))];
+    
+    // Clear existing legend items (except title and size info)
+    const legendItems = legend.querySelectorAll('.legend-item');
+    legendItems.forEach(item => item.remove());
+    
+    // Add legend items for each trigger present in the data
+    triggers.forEach(trigger => {
+      const legendItem = document.createElement('div');
+      legendItem.className = 'legend-item';
+      legendItem.innerHTML = `
+        <div class="legend-color" style="background-color: ${getTriggerColor(trigger)};"></div>
+        <span>${trigger}</span>
+      `;
+      legend.insertBefore(legendItem, legend.querySelector('.legend-size-info'));
+    });
+    
+    // Show/hide legend based on whether there are features
+    legend.style.display = features.length > 0 ? 'block' : 'none';
+  }
+
+  // Toggle legend visibility
+  function toggleLegend() {
+    const legend = document.getElementById('legend');
+    legend.style.display = legend.style.display === 'none' ? 'block' : 'none';
+  }
+
+  // Setup charts
+  const barCtx = document.getElementById('landslideYearChart').getContext('2d');
+  const barChart = new Chart(barCtx, {
+    type: 'bar',
+    data: { labels: [], datasets: [{ label: 'Landslides', data: [], backgroundColor: '#00ffff' }] },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Landslides per Year', color: '#fff' }
+      },
+      scales: {
+        x: { ticks: { color: '#ffffff' } },
+        y: { beginAtZero: true, ticks: { color: '#ffffff' } }
+      }
+    }
+  });
+
+  function loadLandslidesPerYear() {
+    fetch('/api/landslides/yearly_counts/')
+      .then(res => res.json())
+      .then(data => {
+        barChart.data.labels = data.map(d => d.year);
+        barChart.data.datasets[0].data = data.map(d => d.count);
+        barChart.update();
+      })
+      .catch(e => console.error("Error loading yearly counts:", e));
+  }
+
+  const pieCtx = document.getElementById('triggerPieChart').getContext('2d');
+  const pieChart = new Chart(pieCtx, {
+    type: 'pie',
+    data: { labels: [], datasets: [{ data: [], backgroundColor: [] }] },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: 'Trigger Frequency', color: '#fff' },
+        legend: { position: 'right', labels: { color: '#ffffff' } }
+      }
+    }
+  });
+
+  function updatePieChart(features) {
+    const counts = {};
+    features.forEach(f => {
+      const t = f.properties.landslide_trigger || 'Unknown';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+    const labels = Object.keys(counts);
+    const values = Object.values(counts);
+    const colors = ['#00ffc3', '#ff00ff', '#ffdc00', '#00bfff', '#ff6ec7', '#7fff00'];
+    pieChart.data.labels = labels;
+    pieChart.data.datasets[0].data = values;
+    pieChart.data.datasets[0].backgroundColor = labels.map((_, i) => colors[i % colors.length]);
+    pieChart.update();
+  }
+
+  // Event listeners for dropdowns
+  yearSelect.addEventListener('change', () => {
+    populateTriggerDropdown(yearSelect.value);
+    loadLandslideData();
+    loadHeatmap(yearSelect.value, triggerSelect.value);
+  });
+
+  triggerSelect.addEventListener('change', () => {
+    populateYearDropdown(triggerSelect.value);
+    loadLandslideData();
+    loadHeatmap(yearSelect.value, triggerSelect.value);
+
+  });
+
+  // Initial load
+  populateYearDropdown();
+  populateTriggerDropdown();
+  loadLandslideData();
+
+</script>
+
+</body>
+</html>

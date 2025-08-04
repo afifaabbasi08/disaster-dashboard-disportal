@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📂 My Uploads</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #0a0a0a, #101d29);
+            color: white;
+            padding: 30px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #00cccc;
+            color: #000000;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background 0.3s;
+            z-index: 1000;
+        }
+        
+        .back-button:hover {
+            background: #00ffff;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #00ffff;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+        }
+        
+        .uploads-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(31, 31, 31, 0.8);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 1px solid #00cccc;
+        }
+        
+        .uploads-table th {
+            background: linear-gradient(135deg, #00cccc 0%, #008080 100%);
+            color: #000000;
+            padding: 20px;
+            text-align: left;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .uploads-table td {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            vertical-align: middle;
+        }
+        
+        .uploads-table tr:hover {
+            background: rgba(0, 204, 204, 0.1);
+        }
+        
+        .dataset-name {
+            font-weight: bold;
+            color: #00ffff;
+            font-size: 1.1em;
+        }
+        
+        .dataset-category {
+            background: rgba(0, 204, 204, 0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: inline-block;
+        }
+        
+        .dataset-date {
+            color: #cccccc;
+            font-size: 0.9em;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .view-btn {
+            background: #00cccc;
+            color: #000000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .view-btn:hover {
+            background: #00ffff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 255, 0.3);
+        }
+        
+        .delete-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin-left: 5px;
+        }
+        
+        .delete-btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        .menu-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .menu-dots {
+            background: none;
+            border: none;
+            color: #00ffff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .menu-dots:hover {
+            background: rgba(0, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+        
+        .dropdown-menu {
+            position: absolute;
+            right: 0;
+            top: 100%;
+            background: #1f1f1f;
+            border: 1px solid #00cccc;
+            border-radius: 8px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            min-width: 180px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            margin-top: 5px;
+        }
+        
+        .dropdown-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .dropdown-item {
+            padding: 12px 16px;
+            color: white;
+            text-decoration: none;
+            display: block;
+            transition: background 0.3s ease;
+            border-bottom: 1px solid #333;
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item:hover {
+            background: rgba(0, 204, 204, 0.2);
+            color: #00ffff;
+        }
+        
+        .dropdown-item.delete {
+            color: #ff6b6b;
+        }
+        
+        .dropdown-item.delete:hover {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cccccc;
+        }
+        
+        .empty-state h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 768px) {
+            .uploads-table {
+                font-size: 0.9em;
+            }
+            
+            .uploads-table th,
+            .uploads-table td {
+                padding: 15px 10px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="{% url 'home-ui' %}" class="back-button">← Back to Dashboard</a>
+    
+    <div class="container">
+        <h1>📁 My Uploads</h1>
+        
+        {% if datasets %}
+            <table class="uploads-table">
+                <thead>
+                    <tr>
+                        <th>Dataset Name</th>
+                        <th>Category</th>
+                        <th>Upload Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dataset in datasets %}
+                    <tr>
+                        <td>
+                            <div class="dataset-name">📊 {{ dataset.name }}</div>
+                        </td>
+                        <td>
+                            <span class="dataset-category">{{ dataset.category|title }}</span>
+                        </td>
+                        <td>
+                            <div class="dataset-date">{{ dataset.upload_date|date:"M d, Y H:i" }}</div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="{% url 'view_table' table_name=dataset.name %}" class="view-btn">View</a>
+                                <button class="delete-btn" onclick="deleteDataset('{{ dataset.id }}', '{{ dataset.name }}')">🗑️</button>
+                                <div class="menu-container">
+                                    <button class="menu-dots" onclick="toggleMenu('menu-{{ dataset.id }}')">⋮</button>
+                                    <div class="dropdown-menu" id="menu-{{ dataset.id }}">
+                                        <a href="{% url 'view_table' table_name=dataset.name %}" class="dropdown-item">👁️ View Details</a>
+                                        <a href="#" class="dropdown-item">📊 View on Map</a>
+                                        <a href="#" class="dropdown-item">📥 Download</a>
+                                        <a href="#" class="dropdown-item delete" onclick="deleteDataset('{{ dataset.id }}', '{{ dataset.name }}')">🗑️ Delete Dataset</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <div class="empty-state">
+                <div class="upload-icon">📁</div>
+                <h3>No uploads yet</h3>
+                <p>Upload your first CSV file to see it here!</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <script>
+        // Toggle dropdown menus
+        function toggleMenu(menuId) {
+            const menu = document.getElementById(menuId);
+            const allMenus = document.querySelectorAll('.dropdown-menu');
+            
+            // Close all other menus
+            allMenus.forEach(m => {
+                if (m.id !== menuId) {
+                    m.classList.remove('show');
+                }
+            });
+            
+            // Toggle current menu
+            menu.classList.toggle('show');
+            console.log('Menu toggled:', menuId, 'Visible:', menu.classList.contains('show'));
+        }
+        
+        // Close menus when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!event.target.closest('.menu-container')) {
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+        
+        // Delete dataset function
+        function deleteDataset(datasetId, datasetName) {
+            if (confirm(`Are you sure you want to delete "${datasetName}"? This action cannot be undone.`)) {
+                // Create a form and submit it
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/delete_dataset/${datasetId}/`;
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                                 document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1];
+                
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    </script>
+</body>
+</html>
